@@ -1,21 +1,10 @@
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
-<script src="https://ap-development.s3.amazonaws.com/autoproctor.4.2.4.min.js"></script>
-<link rel="stylesheet" href="https://ap-development.s3.amazonaws.com/autoproctor.4.2.4.min.css"/>
 
 <div class="container" id="ap-proctoring-container">
     <h1>AutoProctor</h1>
     <p>Welcome to the AutoProctor Plugin! AutoProctor is an automated tool which ensures that users do not cheat on exams while taking online exams. It tracks their environment and activities using their camera, mic and screen they are sharing. Based on these violations, it calculates a Trust Score and also generates a report of the violations.</p>
-    <div class="ctas">
-        <button class="btn btn-primary" id="btn-start">Start Demo Test</button>
-        <button class="btn btn-secondary" id="btn-stop">Stop Demo Test</button>
-        <button class="btn btn-secondary" id="load-report">Load Report</button>
-
-    </div>
-    <div class="flex flex-row">
-        <div id="ap-test-proctoring-status"></div>
-        <div id="proctor-feedback"></div>
-    </div>
 </div>
-<div class="container mx-auto mt-8 max-w-5xl" id="ap-report__overview"></div>
-<div class="container mx-auto mt-8 max-w-5xl" id="ap-report-tab-container"></div>
+
+<div class="mx-auto mt-8 max-w-5xl" id="ap-report__overview"></div>
+<div class="mx-auto mt-8 max-w-5xl" id="ap-report-tab-container"></div>
+<div class="mx-auto mt-8 max-w-5xl" id="ap-report__session" display="none"></div>

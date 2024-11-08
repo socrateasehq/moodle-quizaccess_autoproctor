@@ -22,21 +22,6 @@ define([], function () {
      * @returns {object}
      */
     function getCredentials(clientId, clientSecret, testAttemptId) {
-        // Check for test-attempt-id in the URL
-        // const urlParams = new URLSearchParams(window.location.search);
-        // const testAttemptIdFromUrl = urlParams.get("test-attempt-id");
-
-        // If no test-attempt-id is found, generate a new one and update the URL
-        // if (!testAttemptIdFromUrl) {
-        //     const curUrl = window.location.href;
-        //     let updatedUrl;
-        //     if (curUrl.indexOf("?") !== -1) {
-        //         updatedUrl = curUrl + `&test-attempt-id=${testAttemptId}`;
-        //     } else {
-        //         updatedUrl = curUrl + `?test-attempt-id=${testAttemptId}`;
-        //     }
-        //     window.location.href = updatedUrl;
-        // }
         const hashedTestAttemptId = getHashTestAttemptId(testAttemptId, clientSecret);
         const creds = {
             clientId,
@@ -50,6 +35,9 @@ define([], function () {
 
     const getReportOptions = () => {
         return {
+            proctoringSummaryDOMId: "ap-report__proctor",
+            proctoringOverviewDOMId: "ap-report__overview",
+            sessionRecordingDOMId: "ap-report__session",
             groupReportsIntoTabs: true,
             userDetails: {
                 name: "First Last",

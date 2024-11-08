@@ -21,6 +21,11 @@ $PAGE->set_url(new moodle_url(
 $clientId = get_config('quizaccess_autoproctor', 'client_id');
 $clientSecret = get_config('quizaccess_autoproctor', 'client_secret');
 
+// Include the scripts and styles
+echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>';
+echo '<script src="https://ap-development.s3.amazonaws.com/autoproctor.4.2.4.min.js"></script>';
+echo '<link rel="stylesheet" href="https://ap-development.s3.amazonaws.com/autoproctor.4.2.4.min.css"/>';
+
 // load autoproctor js module
 $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'loadReport', [
     'clientId' => $clientId,
@@ -29,6 +34,5 @@ $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'loadReport', 
 ]);
 
 echo $OUTPUT->header();
-
 echo $OUTPUT->render_from_template('quizaccess_autoproctor/autoproctor', []);
 echo $OUTPUT->footer();
