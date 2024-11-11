@@ -36,30 +36,6 @@ function xmldb_quizaccess_autoproctor_upgrade($oldversion)
     global $DB;
     $dbman = $DB->get_manager();
 
-    if ($oldversion < 2024111105) {
-        // Define table quizaccess_autoproctor
-        $table = new xmldb_table('quizaccess_autoproctor');
-
-        // Add fields
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('quiz_id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('proctoring_enabled', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('tracking_options', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, '{}');
-        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-
-        // Add keys
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-        $table->add_key('quiz_id', XMLDB_KEY_FOREIGN, ['quiz_id'], 'quiz', ['id']);
-
-        // Create the table if it doesn't exist
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        upgrade_plugin_savepoint(true, 2024111105, 'quizaccess', 'autoproctor');
-    }
-
     if ($oldversion < 2024111106) {
         // Define table
         $table = new xmldb_table('quizaccess_autoproctor_sessions');
@@ -159,6 +135,30 @@ function xmldb_quizaccess_autoproctor_upgrade($oldversion)
         upgrade_plugin_savepoint(true, 2024111109, 'quizaccess', 'autoproctor');
     }
     
+
+    if ($oldversion < 2024111112) {
+        // Define table quizaccess_autoproctor
+        $table = new xmldb_table('quizaccess_autoproctor');
+
+        // Add fields
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('quiz_id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('proctoring_enabled', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('tracking_options', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, '{}');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Add keys
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('quiz_id', XMLDB_KEY_FOREIGN, ['quiz_id'], 'quiz', ['id']);
+
+        // Create the table if it doesn't exist
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2024111112, 'quizaccess', 'autoproctor');
+    }
 
     return true;
 }
