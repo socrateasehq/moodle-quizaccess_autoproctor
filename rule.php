@@ -46,14 +46,17 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias {
 
     public static function make(quizaccess_autoproctor_quiz_settings_class_alias $quizobj, $timenow, $canignoretimelimits) {
         if (empty($quizobj->get_quiz()->requireautoproctor)) {
-            return null;
+            // return null;
         }
 
         return new self($quizobj, $timenow);
     }
 
     public function is_preflight_check_required($attemptid) {
-        // Require preflight check if this is the first time accessing the quiz.
+        // Check if the quiz requires autoproctor
+        if (empty($this->quizobj->get_quiz()->requireautoproctor)) {
+            // return false;
+        }
         return true;
     }
 
@@ -72,24 +75,26 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias {
         }
 
         // Get the current attempt ID or generate a new test attempt ID
+        // Mostly for development purposes, usually the test attempt ID won't be provided in the URL
         $testAttemptId = optional_param(
             'test-attempt-id',
             uniqid('ap_'),
             PARAM_RAW
         );
 
-        // Get proctoring options from quiz settings
-        $quiz = $this->quizobj->get_quiz();
-        $apAudioDetection = $quiz->ap_audio_detection;
-        $apFaceDetection = $quiz->ap_face_detection;
-        $apFullscreen = $quiz->ap_fullscreen;
+        $tracking_options = self::get_ap_settings($this->quizobj->get_quiz()->id)->tracking_options;
 
         // Store in database if this is the first preflight check
         if (empty($attemptid)) {
+            // TODO: handle case where attemptid is empty
+            return;
+        } else {
             $session = new stdClass();
+            $session->quiz_id = $this->quizobj->get_quiz()->id;
             $session->quiz_attempt_id = $attemptid;
             $session->test_attempt_id = $testAttemptId;
-            // $session->status = 'pending';
+            $session->started_at = time();
+            $session->tracking_options = json_encode($tracking_options);
             $session->timecreated = $session->timemodified = time();
             
             $DB->insert_record('quizaccess_autoproctor_sessions', $session);
@@ -105,10 +110,16 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias {
             'clientId' => $clientId,
             'clientSecret' => $clientSecret,
             'testAttemptId' => $testAttemptId,
+            'trackingOptions' => $tracking_options
         ]);
 
         // Add a hidden confirmation checkbox that will be checked via JavaScript when monitoring starts
         $mform->addElement('html', '<div id="ap-status-message">Setting up AutoProctor...<br>Waiting for proctoring to start...</div>');
+    }
+
+    public function validate_preflight_check($data, $files, $errors, $attemptid) {
+        // TODO: check if autoproctor setup is complete
+        return $errors;
     }
 
     public static function add_settings_form_fields(mod_quiz_mod_form $quizform, MoodleQuickForm $mform) {
@@ -193,11 +204,16 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias {
 
     private static function get_ap_settings($quizid) {
         global $DB;
-        $record = $DB->get_record('quizaccess_autoproctor', ['quiz_id' => $quizid]);
-        $tracking_options = json_decode($record->tracking_options, true);
         $result = new stdClass();
-        $result->tracking_options = $tracking_options;
-        $result->proctoring_enabled = $record->proctoring_enabled;
+        $record = $DB->get_record('quizaccess_autoproctor', ['quiz_id' => $quizid]);
+        
+        if ($record) {
+            $result->tracking_options = json_decode($record->tracking_options, true);
+            $result->proctoring_enabled = $record->proctoring_enabled;
+        } else {
+            $result->tracking_options = [];
+            $result->proctoring_enabled = 0;
+        }
         return $result;
     }
 }
