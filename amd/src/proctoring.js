@@ -1,4 +1,20 @@
-define([], function () {
+define(["jquery"], function ($) {
+    const IFRAME_NAME = "ap-iframe";
+    const MOODLE_PREFLIGHT_FORM_ID = "mod_quiz_preflight_form";
+
+    // Cached variables
+    let _apInstance;
+    let _trackingOptions;
+    let _testAttemptId;
+    let _lookupKey;
+
+    // Flags
+    let isPreflightFormSubmitted = false;
+
+    // Cached DOM elements
+    let $apIframe;
+    let $apIframeLoader;
+
     /**
      * Generates a hashed version of the provided testAttemptId with the provided clientSecret
      * using HMAC with SHA256 for authentication.
@@ -33,6 +49,10 @@ define([], function () {
         return creds;
     }
 
+    /**
+     * Generates the report options object required by AutoProctor.
+     * @returns {object}
+     */
     const getReportOptions = () => {
         return {
             proctoringSummaryDOMId: "ap-report__proctor",
@@ -64,82 +84,263 @@ define([], function () {
                 recordSession: true,
             },
             showHowToVideo: false,
+            lookupKey: _lookupKey,
         };
         return proctoringOptions;
     };
 
     /**
-     * Handles the custom test start listener.
-     * @function
-     * @name handleCustomTestStartListener
-     * @param {number} quizTime
-     * @returns {void}
+     * Tracks URL changes in an iframe and executes a callback when changes occur
+     * @param {string} iframeId - The ID of the iframe to monitor
+     * @param {Function} callback - Function to call when URL changes, receives new URL as parameter
      */
-    function handleCustomTestStartListener(quizTime) {
-        window.addEventListener("apMonitoringStarted", function () {
-            // Show quiz content
-            const quizContent = document.querySelector("#responseform");
-            if (quizContent) {
-                quizContent.style.display = "block";
-            }
+    const onIframeUrlChanged = (iframeId, callback) => {
+        const $iframe = document.getElementById(iframeId);
+        let previousUrl = null;
 
-            // Remove loading message
-            const loadingDiv = document.getElementById("ap-loading");
-            if (loadingDiv) {
-                loadingDiv.remove();
-            }
+        // Main function to handle URL changes
+        const handleUrlChange = () => {
+            const currentUrl = $iframe.contentWindow.location.href;
 
-            // Start the timer which was stopped until proctoring starts
-            const quizTimer = M?.mod_quiz?.timer;
-            if (quizTimer) {
-                // quizTimer.endtime = quizTime;
-                // quizTimer.update();
-                // quizTimer.init(window.Y, quizTime, 0);
-            }
+            // Show loading indicator
+            $apIframeLoader.classList.remove("aptw-hidden");
 
-            // Show timer
-            const timerDiv = document.querySelector("#quiz-time-wrapper");
-            if (timerDiv) {
-                timerDiv.style.display = "flex";
+            // Only process if URL has actually changed
+            if (currentUrl !== previousUrl) {
+                callback(currentUrl);
+                previousUrl = currentUrl;
             }
+        };
+
+        // Set up iframe load event. handleUrlChange is called both when iframe is loaded
+        // as well as when iframe is unloaded. While maintaining focus on the main window.
+        $iframe.addEventListener("load", () => {
+            handleUrlChange();
+
+            // Add unload listener to iframe content
+            $iframe.contentWindow.addEventListener("unload", () => {
+                window.focus();
+                handleUrlChange();
+            });
+
+            // Hide loader after small delay
+            setTimeout(() => {
+                $apIframeLoader.classList.add("aptw-hidden");
+            }, 100);
         });
-    }
+    };
 
     /**
-     * Intercepts the quiz start to prevent it from starting until proctoring starts.
-     * @function
-     * @name interceptQuizStart
-     * @param {number} quizTime
-     * @returns {void}
+     * Polls for the body element of an iframe until it becomes available, then executes a callback.
+     * @param {string} iframeId - The ID of the iframe to monitor
+     * @param {Function} callback - Function to call when the body element is available, with body element as parameter
      */
-    function interceptQuizStart(quizTime) {
-        if (M?.mod_quiz?.timer?.stop) {
-            // Stop the timer until proctoring starts
-            M.mod_quiz.timer.stop();
+    // const pollForIframeBody = (iframeId, callback) => {
+    //     const elementIntervalId = setInterval(() => {
+    //         const targetElement = document.getElementById(iframeId).contentWindow.document.body;
+    //         if (targetElement) {
+    //             clearInterval(elementIntervalId);
+    //             callback(targetElement);
+    //         }
+    //     }, 500);
+    // };
+
+    /**
+     * Handles URL changes in the iframe and starts or stops the proctoring process accordingly.
+     * Proctoring will only start on attempt.php and summary.php
+     * And will stop on any other page
+     * @param {string} newUrl - The new URL of the iframe
+     */
+    const handleIframeUrlChange = async (newUrl) => {
+        const fileLocation = getUrlFileLocation(newUrl);
+        const urlsToCreateApSession = ["attempt.php", "summary.php"];
+        const shouldCreateApSession = urlsToCreateApSession.includes(fileLocation);
+
+        if (shouldCreateApSession) {
+            await createNewApSession(newUrl, _testAttemptId, _trackingOptions);
+        } else if (_apInstance.isApTestStarted) {
+            _apInstance.stop();
+            window.addEventListener("apMonitoringStopped", () => {
+                window.location.href = newUrl;
+            });
+        }
+    };
+
+    /**
+     * Creates a new AP session and if it fails, it will retry up to 5 times
+     * @param {string} url
+     * @param {string} testAttemptId
+     * @param {object} trackingOptions
+     * @param {number} retriesLeft
+     */
+    const createNewApSession = (url, testAttemptId, trackingOptions, retriesLeft = 5) => {
+        try {
+            const params = new URL(url).searchParams;
+            const attemptId = params.get("attempt");
+            const sesskey = M.cfg?.sesskey || document.querySelector('input[name="sesskey"]')?.value;
+
+            fetch(M.cfg.wwwroot + "/mod/quiz/accessrule/autoproctor/create_session.php", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: new URLSearchParams({
+                    sesskey: sesskey,
+                    attemptid: attemptId,
+                    test_attempt_id: testAttemptId,
+                    tracking_options: JSON.stringify(trackingOptions),
+                }),
+            });
+        } catch (error) {
+            if (retriesLeft > 0) {
+                setTimeout(() => createNewApSession(url, testAttemptId, trackingOptions, retriesLeft - 1), 1000);
+            } else {
+                throw error;
+            }
+        }
+    };
+
+    /**
+     * Adds an iframe to the document body with the specified attributes and styles.
+     * Caches iframe in window object for later use
+     */
+    const addIframe = () => {
+        const $iframe = document.createElement("iframe");
+        $iframe.name = IFRAME_NAME;
+        $iframe.id = IFRAME_NAME;
+        $iframe.classList.add(
+            IFRAME_NAME,
+            "aptw-hidden",
+            "aptw-absolute",
+            "aptw-inset-0",
+            "aptw-w-screen",
+            "aptw-h-screen"
+        );
+        document.body.append($iframe);
+
+        // Cache iframe for later use
+        $apIframe = $iframe;
+    };
+
+    /**
+     * Adds a page loader to the document body.
+     * Caches loader in window object for later use
+     */
+    const addPageLoader = () => {
+        const loaderName = "ap-iframe-loader";
+        const loaderContainer = document.createElement("div");
+        loaderContainer.id = loaderName;
+        loaderContainer.classList.add("aptw-hidden");
+        document.body.append(loaderContainer);
+
+        const loaderSpinner = document.createElement("div");
+        loaderSpinner.classList.add("aptw-border-b-2", "aptw-border-blue-600", "aptw-animate-spin");
+
+        // Cache loader for later use
+        $apIframeLoader = loaderContainer;
+        $apIframeLoader.append(loaderSpinner);
+    };
+
+    const addSubmitPreflightEvent = ($preflightForm) => {
+        // Set start attempt button to the center
+        const formActionsContainer = $preflightForm.getElementsByClassName("felement");
+        if (formActionsContainer.length > 0) {
+            const buttonContainer =
+                formActionsContainer[formActionsContainer.length - 1].getElementsByClassName("aptw-flex");
+            if (buttonContainer.length > 0) {
+                buttonContainer[0].classList.add("aptw-justify-center");
+            }
         }
 
-        // Hide quiz content initially
-        const quizContent = document.querySelector("#responseform");
-        if (quizContent) {
-            quizContent.style.display = "none";
-        }
+        // Intercept submit event
+        $preflightForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-        // Hide Timer
-        const timerDiv = document.querySelector("#quiz-timer-wrapper");
-        if (timerDiv) {
-            timerDiv.style.display = "none";
-        }
+            if (isPreflightFormSubmitted) {
+                return;
+            }
+            isPreflightFormSubmitted = true;
 
-        // Show loading message
-        const loadingDiv = document.createElement("div");
-        loadingDiv.id = "ap-loading";
-        loadingDiv.className = "alert alert-info";
-        loadingDiv.innerHTML = "AutoProctor is not ready yet. Please wait until the setup for AutoProctor is complete.";
-        quizContent.parentNode.insertBefore(loadingDiv, quizContent);
+            const formData = $(`#${MOODLE_PREFLIGHT_FORM_ID}`).serialize();
+            const autoProctorConsent = formData.includes("autoproctor_consent=1");
 
-        // Setup listener for custom test start
-        handleCustomTestStartListener(quizTime);
-    }
+            if (autoProctorConsent) {
+                // Close preflight form overlay
+                const $cancelPreflightAttempt = $preflightForm.querySelector("#id_cancel");
+                $cancelPreflightAttempt?.click();
+
+                await _apInstance.setup(getProctoringOptions(_trackingOptions));
+                await _apInstance.start();
+                window.addEventListener("apMonitoringStarted", () => {
+                    submitPreflightForm(e.target.action, $preflightForm, formData);
+                });
+            }
+        });
+    };
+
+    /**
+     * Submits the preflight form and handles the response
+     * If the response contains a preflight form, it will submit that form instead
+     * Otherwise, it will submit the preflight form as usual
+     *
+     * It will also show the iframe loader and remove the page loader and handle url changes in the iframe
+     * @param {string} submitUrl
+     * @param {object} $preflightForm
+     * @param {string} formData
+     */
+    const submitPreflightForm = (submitUrl, $preflightForm, formData) => {
+        $.ajax({
+            url: submitUrl,
+            method: "POST",
+            data: formData,
+        })
+            .done((res) => {
+                const parsedPreflightForm = $($.parseHTML(res)).find(`form[id="${MOODLE_PREFLIGHT_FORM_ID}"]`);
+                if (parsedPreflightForm.length === 1) {
+                    $preflightForm.submit();
+                    return;
+                }
+
+                $apIframeLoader.classList.remove("aptw-hidden");
+                $preflightForm.setAttribute("target", IFRAME_NAME);
+                $preflightForm.submit();
+
+                onIframeUrlChanged(IFRAME_NAME, handleIframeUrlChange);
+
+                $apIframe.classList.remove("aptw-hidden");
+
+                document.querySelector("#page-wrapper")?.remove();
+            })
+            .fail(() => {
+                isPreflightFormSubmitted = false;
+            });
+    };
+
+    /**
+     * Gets the file location from a URL
+     * Example: host.com/mod/quiz/attempt.php?x=1&y=2 to attempt.php
+     * @param {string} url
+     * @returns {string}
+     */
+    const getUrlFileLocation = (url) => {
+        const urlObject = new URL(url);
+        return urlObject.pathname.split("/").pop();
+    };
+
+    /**
+     * Waits for an element to appear in the document and then calls a callback with the element.
+     * @param {string} selector - The CSS selector to search for
+     * @param {Function} callback - Function to call with the found element as parameter
+     */
+    const waitForElement = (selector, callback) => {
+        const elementIntervalId = setInterval(() => {
+            const targetElement = document.querySelector(selector);
+            if (targetElement) {
+                clearInterval(elementIntervalId);
+                callback(targetElement);
+            }
+        }, 500);
+    };
 
     /**
      * Initializes the AutoProctor instance and sets up event listeners for start and stop buttons.
@@ -150,39 +351,42 @@ define([], function () {
      * @param {string} clientSecret
      * @param {string} testAttemptId
      * @param {object} trackingOptions
-     * @param {number} quizTime
+     * @param {number} cmid
+     * @param {string} lookupKey
      * @returns {Promise<void>}
      */
-    async function initAutoProctor(clientId, clientSecret, testAttemptId, trackingOptions, quizTime) {
-        // First of all, intercept the quiz start to prevent it from starting until proctoring starts
-        interceptQuizStart(quizTime);
-
+    async function initAutoProctor(clientId, clientSecret, testAttemptId, trackingOptions, cmid, lookupKey) {
         // Check if AutoProctor is already loaded and retry if not
         if (typeof window.AutoProctor === "undefined") {
-            setTimeout(() => initAutoProctor(clientId, clientSecret, testAttemptId, trackingOptions, quizTime), 1000);
+            setTimeout(
+                () => initAutoProctor(clientId, clientSecret, testAttemptId, trackingOptions, cmid, lookupKey),
+                1000
+            );
             return;
         }
 
+        // Cache variables in execution context
+        _trackingOptions = trackingOptions ?? {};
+        _testAttemptId = testAttemptId ?? "";
+        _lookupKey = lookupKey ?? "";
+
+        // Initialize AutoProctor instance
         const credentials = getCredentials(clientId, clientSecret, testAttemptId);
-        const apInstance = new window.AutoProctor(credentials);
-        await apInstance.setup(getProctoringOptions(trackingOptions));
+        _apInstance = new window.AutoProctor(credentials);
 
-        // Start proctoring
-        await apInstance.start();
+        addIframe();
+        addPageLoader();
 
-        // Handle quiz submission
-        document.querySelector("form#responseform").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            await apInstance.stop();
-            e.target.submit();
-        });
+        waitForElement(`#${MOODLE_PREFLIGHT_FORM_ID}`, ($targetElement) => {
+            addSubmitPreflightEvent($targetElement);
 
-        // Handle report generation
-        window.addEventListener("apMonitoringStopped", async () => {
-            const reportOptions = getReportOptions();
-            setTimeout(() => {
-                apInstance.showReport(reportOptions);
-            }, 10000);
+            // Prevent user to directly access attempt.php by overriding url to view.php
+            const isOnStartattempt = ["startattempt.php", "attempt.php"].includes(
+                getUrlFileLocation(window.location.href)
+            );
+            if (isOnStartattempt) {
+                window.history.replaceState({}, "", `/mod/quiz/view.php?id=${cmid}`);
+            }
         });
     }
 
