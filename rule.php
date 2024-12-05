@@ -272,12 +272,6 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         if ($session) {
             // If session exists, use that test attempt ID
             $testAttemptId = $session->test_attempt_id;
-        } else if ($unfinishedattempt) {
-            // If session does not exist and there is an unfinished attempt,
-            // create a new session containing the test attempt ID. This should ideally
-            // never happen, but it's here to prevent errors if the user navigates away
-            // from the quiz before the session is created in mdl_quizaccess_autoproctor_session.
-            // self::create_ap_session($unfinishedattempt->id, $testAttemptId, $tracking_options);
         } else {
             // Session cannot be created in db as we don't have an attempt ID yet.
             // This will be created in setup_attempt_page() when the attempt ID is generated.
@@ -325,26 +319,6 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         return $errors;
     }
 
-    public function setup_attempt_page($page)
-    {
-
-        $attemptid = $page->url->get_param('attempt');
-        if (empty($attemptid)) {
-            return;
-        }
-
-        $ap_session = self::get_ap_session($attemptid);
-
-        // if (empty($ap_session)) {
-        //     // If no session exists, create a new one
-        //     $quizid = $this->quizobj->get_quiz()->id;
-        //     $testAttemptId = $this->testAttemptId;
-        //     $tracking_options = self::get_ap_settings($quizid)->tracking_options;
-
-        //     self::create_ap_session($attemptid, $testAttemptId, $tracking_options);
-        // }
-    }
-
     /**
      * Get the AutoProctor settings for a quiz from the database
      * @param int $quizid
@@ -375,31 +349,6 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     {
         global $DB;
         return $DB->get_record('quizaccess_autoproctor_sessions', ['quiz_attempt_id' => $attemptid]);
-    }
-
-    /**
-     * Creates an AutoProctor session for an attempt
-     * Adds entry in mdl_quizaccess_autoproctor_sessions table
-     * @param int $attemptid
-     * @param string $testAttemptId
-     * @param array $tracking_options
-     */
-    private static function create_ap_session($attemptid, $testAttemptId, $tracking_options)
-    {
-        global $DB;
-
-        // Get quiz attempt record to get quiz id
-        $attempt = $DB->get_record('quiz_attempts', ['id' => $attemptid], '*', MUST_EXIST);
-        $quizid = $attempt->quiz;
-
-        $session = new stdClass();
-        $session->quiz_id = $quizid;
-        $session->quiz_attempt_id = $attemptid;
-        $session->test_attempt_id = $testAttemptId;
-        $session->started_at = time();
-        $session->tracking_options = json_encode($tracking_options);
-        $session->timecreated = $session->timemodified = time();
-        $DB->insert_record('quizaccess_autoproctor_sessions', $session);
     }
 
     /**
