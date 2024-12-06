@@ -278,9 +278,9 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         }
 
         // Include the scripts and styles
-        echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>';
-        echo '<script src="https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.js"></script>';
-        echo '<link rel="stylesheet" href="https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.css"/>';
+        $PAGE->requires->js(new moodle_url('https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js'), true);
+        $PAGE->requires->js(new moodle_url('https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.js'), true);
+        $PAGE->requires->css(new moodle_url('https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.css'));
 
         $this->testAttemptId = $testAttemptId;
 

@@ -165,6 +165,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
         if (fileLocation === "summary.php") {
             // Handle quiz submission process
             const handleFinalSubmit = ($finalSubmitBtn) => {
+                $finalSubmitBtn.classList.add("listeners-bound");
                 $finalSubmitBtn.addEventListener("click", async () => {
                     if (_apInstance?.isApTestStarted) {
                         await _apInstance?.stop();
@@ -181,6 +182,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
             waitForElement(
                 MOODLE_FINISH_FORM_SUBMIT_BTN,
                 ($finishBtn) => {
+                    $finishBtn.classList.add("listeners-bound");
                     $finishBtn.addEventListener("click", () => {
                         // Wait for final submit button to appear in the modal
                         waitForElement(MOODLE_FINISH_MODAL_SUBMIT_BTN, handleFinalSubmit, true);
@@ -271,7 +273,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
         $apIframeLoader.style.zIndex = 1020;
 
         $apIframeLoader.classList.add(
-            "aptw-absolute",
+            "aptw-fixed",
             "aptw-top-0",
             "aptw-bottom-0",
             "aptw-hidden",
