@@ -160,5 +160,13 @@ function xmldb_quizaccess_autoproctor_upgrade($oldversion)
         upgrade_plugin_savepoint(true, 2024111112, 'quizaccess', 'autoproctor');
     }
 
+    if ($oldversion < 2024120601) {
+        // Delete ended_at field from table quizaccess_autoproctor_sessions
+        $table = new xmldb_table('quizaccess_autoproctor_sessions');
+        $ended_at = new xmldb_field('ended_at', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $dbman->drop_field($table, $ended_at);
+
+        upgrade_plugin_savepoint(true, 2024120601, 'quizaccess', 'autoproctor');
+    }
     return true;
 }
