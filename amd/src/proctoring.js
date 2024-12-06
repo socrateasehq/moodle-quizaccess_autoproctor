@@ -1,4 +1,4 @@
-define(["jquery"], function ($) {
+define(["jquery", "core/templates"], function ($, Templates) {
     const IFRAME_NAME = "ap-iframe";
     const MOODLE_PREFLIGHT_FORM_ID = "mod_quiz_preflight_form";
     const MOODLE_PAGE_CONTENT_ID = "page-content";
@@ -250,19 +250,81 @@ define(["jquery"], function ($) {
      * Adds a page loader to the document body.
      * Caches loader in window object for later use
      */
-    const addPageLoader = () => {
+    const addPageLoader = async () => {
         const loaderName = "ap-iframe-loader";
-        const loaderContainer = document.createElement("div");
-        loaderContainer.id = loaderName;
-        loaderContainer.classList.add("aptw-hidden");
-        document.body.append(loaderContainer);
+        $apIframeLoader = document.createElement("div");
+        $apIframeLoader.id = loaderName;
 
-        const loaderSpinner = document.createElement("div");
-        loaderSpinner.classList.add("aptw-border-b-2", "aptw-border-blue-600", "aptw-animate-spin");
+        // IMPORTANT: Z-index must be greater than the z-index of the page content
+        // but less than the z-index of Swals shown by AutoProctor
+        $apIframeLoader.style.zIndex = 1020;
 
-        // Cache loader for later use
-        $apIframeLoader = loaderContainer;
-        $apIframeLoader.append(loaderSpinner);
+        $apIframeLoader.classList.add(
+            "aptw-absolute",
+            "aptw-top-0",
+            "aptw-bottom-0",
+            "aptw-hidden",
+            "aptw-w-screen",
+            "aptw-h-screen",
+            "aptw-bg-white",
+            "aptw-flex",
+            "aptw-items-center",
+            "aptw-justify-center"
+        );
+
+        document.body.append($apIframeLoader);
+
+        try {
+            const html = await Templates.render("quizaccess_autoproctor/loader", {});
+            if (html) {
+                $apIframeLoader.innerHTML = html;
+                bindApProgressUpdate();
+            }
+        } catch (error) {
+            // Fallback loader in case template fails
+            $apIframeLoader.innerHTML = '<div class="aptw-text-center">Loading...</div>';
+        }
+    };
+
+    /**
+     * Binds the apProgressUpdate event to the loader to update the progress bar
+     */
+    const bindApProgressUpdate = () => {
+        window.addEventListener("apProgressUpdate", (e) => {
+            const action = e.detail;
+            if (action === "hide") {
+                setTimeout(() => {
+                    $apIframeLoader.classList.add("aptw-hidden");
+                }, 100);
+            } else {
+                document.getElementById("ap-progress-text").style.display = "block";
+                document.getElementById("pre-loader-text").style.display = "none";
+            }
+            incrementSetupProgBar();
+        });
+
+        /**
+         * Increments the progress bar by 10% on each call
+         */
+        function incrementSetupProgBar() {
+            const progressBarPercent = document.getElementById("ap-progress-bar-percent");
+            const progressBar = document.getElementById("ap-progress-bar");
+
+            if (!progressBarPercent || !progressBar) {
+                return;
+            }
+
+            const currentVal = parseInt(progressBarPercent.innerText) || 0;
+            const newVal = currentVal + 10;
+
+            // remove hidden class from progress bar if new progress percent is greater than 10
+            if (newVal > 10) {
+                $apIframeLoader.classList.remove("aptw-hidden");
+            }
+
+            progressBarPercent.innerText = newVal;
+            progressBar.style.width = newVal + "%";
+        }
     };
 
     /**

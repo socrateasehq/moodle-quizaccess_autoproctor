@@ -15,3 +15,6 @@ $plugin->requires = 2022112800;
 $plugin->component = 'quizaccess_autoproctor';
 $plugin->maturity = MATURITY_ALPHA;
 $plugin->release = 'v0.1';
+$plugin->dependencies = [
+    'theme_boost' => ANY_VERSION,
+];
