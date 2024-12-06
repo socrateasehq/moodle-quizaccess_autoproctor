@@ -13,6 +13,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
 
     // Flags
     let isPreflightFormSubmitted = false;
+    let isApProgressCompleted = false;
 
     // Cached DOM elements
     let $apIframe;
@@ -128,11 +129,21 @@ define(["jquery", "core/templates"], function ($, Templates) {
                 handleUrlChange();
             });
 
-            // Hide loader after small delay
-            setTimeout(() => {
-                $apIframeLoader.classList.add("aptw-hidden");
-            }, 100);
+            hideLoaderIfProgressCompleted();
         });
+    };
+
+    /**
+     * Hides the loader if the progress is completed
+     */
+    const hideLoaderIfProgressCompleted = () => {
+        if (isApProgressCompleted) {
+            $apIframeLoader.remove();
+        } else {
+            setTimeout(() => {
+                hideLoaderIfProgressCompleted();
+            }, 500);
+        }
     };
 
     /**
@@ -291,14 +302,13 @@ define(["jquery", "core/templates"], function ($, Templates) {
      */
     const bindApProgressUpdate = () => {
         window.addEventListener("apProgressUpdate", (e) => {
-            const action = e.detail;
+            const { action } = e.detail;
             if (action === "hide") {
-                setTimeout(() => {
-                    $apIframeLoader.classList.add("aptw-hidden");
-                }, 100);
-            } else {
+                isApProgressCompleted = true;
+            } else if (action === "show") {
                 document.getElementById("ap-progress-text").style.display = "block";
                 document.getElementById("pre-loader-text").style.display = "none";
+                $apIframeLoader?.classList.remove("aptw-hidden");
             }
             incrementSetupProgBar();
         });
@@ -316,11 +326,6 @@ define(["jquery", "core/templates"], function ($, Templates) {
 
             const currentVal = parseInt(progressBarPercent.innerText) || 0;
             const newVal = currentVal + 10;
-
-            // remove hidden class from progress bar if new progress percent is greater than 10
-            if (newVal > 10) {
-                $apIframeLoader.classList.remove("aptw-hidden");
-            }
 
             progressBarPercent.innerText = newVal;
             progressBar.style.width = newVal + "%";
