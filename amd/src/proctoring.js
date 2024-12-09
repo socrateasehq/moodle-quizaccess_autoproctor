@@ -14,6 +14,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
     // Flags
     let isPreflightFormSubmitted = false;
     let isApProgressCompleted = false;
+    let proctoringInProgress = false;
 
     // Cached DOM elements
     let $apIframe;
@@ -165,11 +166,11 @@ define(["jquery", "core/templates"], function ($, Templates) {
         if (fileLocation === "summary.php") {
             // Handle quiz submission process
             const handleFinalSubmit = ($finalSubmitBtn) => {
-                $finalSubmitBtn.classList.add("listeners-bound");
                 $finalSubmitBtn.addEventListener("click", async () => {
-                    if (_apInstance?.isApTestStarted) {
+                    if (proctoringInProgress) {
                         await _apInstance?.stop();
                         window.addEventListener("apMonitoringStopped", () => {
+                            proctoringInProgress = false;
                             window.location.href = newUrl;
                         });
                     } else {
@@ -182,7 +183,6 @@ define(["jquery", "core/templates"], function ($, Templates) {
             waitForElement(
                 MOODLE_FINISH_FORM_SUBMIT_BTN,
                 ($finishBtn) => {
-                    $finishBtn.classList.add("listeners-bound");
                     $finishBtn.addEventListener("click", () => {
                         // Wait for final submit button to appear in the modal
                         waitForElement(MOODLE_FINISH_MODAL_SUBMIT_BTN, handleFinalSubmit, true);
@@ -191,6 +191,16 @@ define(["jquery", "core/templates"], function ($, Templates) {
                 true
             );
             return;
+        }
+
+        // If it is review.php and proctoring is in progress,
+        // stop the AP session and redirect to newUrl
+        if (fileLocation === "review.php" && proctoringInProgress) {
+            await _apInstance?.stop();
+            window.addEventListener("apMonitoringStopped", () => {
+                proctoringInProgress = false;
+                window.location.href = newUrl;
+            });
         }
 
         // Create new AP session on attempt.php
@@ -369,6 +379,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
                 await _apInstance.setup(getProctoringOptions(_trackingOptions));
                 await _apInstance.start();
                 window.addEventListener("apMonitoringStarted", () => {
+                    proctoringInProgress = true;
                     submitPreflightForm(e.target.action, $preflightForm, formData);
                 });
             }
