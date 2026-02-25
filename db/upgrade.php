@@ -164,9 +164,37 @@ function xmldb_quizaccess_autoproctor_upgrade($oldversion)
         // Delete ended_at field from table quizaccess_autoproctor_sessions
         $table = new xmldb_table('quizaccess_autoproctor_sessions');
         $ended_at = new xmldb_field('ended_at', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
-        $dbman->drop_field($table, $ended_at);
+        if ($dbman->field_exists($table, $ended_at)) {
+            $dbman->drop_field($table, $ended_at);
+        }
 
         upgrade_plugin_savepoint(true, 2024120601, 'quizaccess', 'autoproctor');
     }
+
+    if ($oldversion < 2025022501) {
+        // Recreate quizaccess_autoproctor table with correct schema
+        $table = new xmldb_table('quizaccess_autoproctor');
+
+        // Drop table if it exists with wrong schema
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Create table with correct schema
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('quiz_id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('proctoring_enabled', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('tracking_options', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('quiz_id', XMLDB_KEY_FOREIGN, ['quiz_id'], 'quiz', ['id']);
+
+        $dbman->create_table($table);
+
+        upgrade_plugin_savepoint(true, 2025022501, 'quizaccess', 'autoproctor');
+    }
+
     return true;
 }

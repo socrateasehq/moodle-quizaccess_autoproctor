@@ -196,6 +196,20 @@ mupgrade
 mphp admin/cli/purge_caches.php
 ```
 
+### Quick Reference: What to Run After Changes
+
+| File Changed | Command to Run |
+|--------------|----------------|
+| `lang/en/*.php` (language strings) | `mcache` |
+| `templates/*.mustache` | `mcache` |
+| `amd/src/*.js` (JavaScript) | `npx grunt amd --component=quizaccess_autoproctor` then `mcache` |
+| `version.php` | `mupgrade` |
+| `db/install.xml` | `mupgrade` (for fresh install) |
+| `db/upgrade.php` | Bump `version.php` first, then `mupgrade` |
+| `rule.php` or other PHP | `mcache` (or just refresh if opcache disabled) |
+| `settings.php` | `mcache` |
+| `db/access.php` (capabilities) | `mupgrade` then `mcache` |
+
 ### Building JavaScript
 
 After modifying `amd/src/proctoring.js`:
@@ -211,12 +225,18 @@ Or if using Moodle's grunt setup:
 grunt amd
 ```
 
+Then purge caches:
+
+```bash
+mcache
+```
+
 ### Database Changes
 
 1. Update `db/install.xml` with schema changes
 2. Add migration to `db/upgrade.php`
 3. Increment version in `version.php`
-4. Run `mphp admin/cli/upgrade.php`
+4. Run `mupgrade`
 
 ### Debugging
 
@@ -281,7 +301,43 @@ See `db/upgrade.php` for database migration history.
 | 2024111109 | Removed session_id and status fields |
 | 2024111112 | Created quizaccess_autoproctor settings table |
 | 2024120601 | Removed ended_at field |
-| 2024120702 | Current version |
+| 2024120702 | Previous stable version |
+| 2025022501 | Fixed install.xml schema mismatch (requireautoproctor → proctoring_enabled), added timecreated/timemodified fields |
+
+## Troubleshooting Development Issues
+
+### "Error reading from database" after schema changes
+
+If you see database errors after modifying `install.xml`, the table schema may be out of sync:
+
+1. **Check current table structure in phpMyAdmin**
+2. **Drop and recreate the table:**
+   ```sql
+   DROP TABLE IF EXISTS mdl_quizaccess_autoproctor;
+   DROP TABLE IF EXISTS mdl_quizaccess_autoproctor_sessions;
+   ```
+3. **Bump version number** in `version.php`
+4. **Add upgrade step** in `db/upgrade.php` to recreate the table
+5. **Run upgrade:**
+   ```bash
+   mupgrade
+   ```
+
+### Schema mismatch between install.xml and code
+
+The `install.xml` is used for fresh installations. The `upgrade.php` handles existing installations. Both must match what the PHP code expects.
+
+**Common field name issues:**
+- `install.xml` field names must match what `save_settings()` and `get_ap_settings()` use
+- If code uses `proctoring_enabled`, both install.xml and upgrade.php must use that name
+
+### Upgrade says "No upgrade needed" but table is missing
+
+This happens when you drop a table but don't bump the version:
+
+1. Moodle tracks the installed version in `mdl_config_plugins`
+2. If version hasn't changed, upgrade won't run
+3. **Solution:** Bump `$plugin->version` in `version.php`
 
 ## Contributing
 

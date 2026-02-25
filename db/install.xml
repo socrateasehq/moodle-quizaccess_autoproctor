@@ -23,12 +23,14 @@
                 <KEY NAME="quiz_attempt_id" TYPE="foreign" FIELDS="quiz_attempt_id" REFTABLE="quiz_attempts" REFFIELDS="id"/>
             </KEYS>
         </TABLE>
-        <TABLE NAME="quizaccess_autoproctor" COMMENT="Stores proctoring logs">
+        <TABLE NAME="quizaccess_autoproctor" COMMENT="Stores quiz proctoring settings">
             <FIELDS>
                 <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
                 <FIELD NAME="quiz_id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
-                <FIELD NAME="requireautoproctor" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="proctoring_enabled" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
                 <FIELD NAME="tracking_options" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
             </FIELDS>
             <KEYS>
                 <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

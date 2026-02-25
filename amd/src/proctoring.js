@@ -48,8 +48,8 @@ define(["jquery", "core/templates"], function ($, Templates) {
             clientId,
             testAttemptId,
             hashedTestAttemptId,
-            domain: "https://dev.autoproctor.co",
-            environment: "development",
+            domain: "https://dev.autoproctor.co", // TODO: Change to production domain before release
+            environment: "development",           // TODO: Change to 'production' before release
         };
         return creds;
     }

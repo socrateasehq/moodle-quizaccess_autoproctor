@@ -41,10 +41,17 @@ AutoProctor is a quiz access rule plugin that integrates automated proctoring in
 
 ## Configuration
 
-### Step 1: Add API Credentials
+### Step 1: Get API Credentials
+
+1. Register at [autoproctor.co/developers/register](https://autoproctor.co/developers/register/)
+2. After registration, you'll receive a **Client ID** and **Client Secret**
+
+> **Note:** If you see the warning "AutoProctor key-pair (credentials) are not set" on a quiz page, it means you haven't configured the credentials yet.
+
+### Step 2: Add API Credentials to Moodle
 
 1. Go to **Site Administration > Plugins > Activity modules > Quiz > AutoProctor Integration**
-2. Enter your **Client ID** and **Client Secret** from your AutoProctor dashboard
+2. Enter your **Client ID** and **Client Secret**
 3. Optionally enable "Enable AutoProctor by default" for all new quizzes
 4. Save changes
 
