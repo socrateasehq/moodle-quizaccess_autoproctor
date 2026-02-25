@@ -1,125 +1,138 @@
-# AutoProctor - Moodle Quiz Access Rule Plugin
+# AutoProctor - Moodle Quiz Proctoring Plugin
 
-AutoProctor is a proctoring integration plugin for Moodle quizzes that monitors students during online exams to prevent cheating. It integrates with the external AutoProctor service (autoproctor.co) to track students via their camera, microphone, and screen.
+AutoProctor is a quiz access rule plugin that integrates automated proctoring into Moodle quizzes. It monitors students during online exams using their camera, microphone, and screen to help prevent cheating and ensure exam integrity.
 
 ## Features
 
-### Configurable Tracking Options (per quiz)
+- **Automated Monitoring** - AI-powered proctoring that tracks student behavior during quizzes
+- **Flexible Configuration** - Enable/disable specific tracking features per quiz
+- **Student Consent** - Built-in consent workflow before exam starts
+- **Proctoring Reports** - View detailed reports with trust scores and flagged violations
+- **Seamless Integration** - Works within the standard Moodle quiz workflow
 
-Teachers can enable/disable these monitoring features:
+### Tracking Options
 
 | Category | Options |
 |----------|---------|
-| **Activity** | Audio detection, Number of humans detection, Tab switch detection |
-| **Camera** | Test taker photo at start, Random photos, Camera preview |
-| **Screen** | Capture switched tab, Record session, Detect multiple screens, Force fullscreen |
-
-### Consent & Preflight Check
-
-- Before starting a quiz, students must consent to granting access to screen, microphone, and camera
-- A preflight check form is displayed before the quiz attempt begins
-
-### Session Management
-
-- Creates proctoring sessions linked to quiz attempts
-- Sessions are stored in `quizaccess_autoproctor_sessions` table
-- Each session has a unique `test_attempt_id` (HMAC-SHA256 hashed for authentication)
-
-### iframe-based Quiz Experience
-
-- After proctoring starts, the quiz loads in an iframe while AutoProctor monitors the main window
-- Handles navigation between `attempt.php`, `summary.php`, and `review.php`
-- Automatically stops proctoring when quiz is submitted
-
-### Reporting
-
-- Teachers/managers can view proctoring reports via a button on the quiz page
-- Reports are loaded from AutoProctor's external service
-- Capability `quizaccess/autoproctor:viewreport` controls access (teachers, editing teachers, managers)
-
-## File Structure
-
-| File | Purpose |
-|------|---------|
-| `rule.php` | Main plugin class - settings form, preflight check, validation |
-| `amd/src/proctoring.js` | Frontend - initializes AutoProctor SDK, handles iframe navigation, session creation |
-| `create_session.php` | API endpoint to create proctoring sessions in DB |
-| `loadreport.php` | Loads proctoring report view |
-| `settings.php` | Admin settings for client_id, client_secret, default enable |
-| `db/install.xml` | Database schema definition |
-| `db/upgrade.php` | Database migration scripts |
-| `db/access.php` | Capability definitions |
-| `lang/en/quizaccess_autoproctor.php` | Language strings |
-| `templates/` | Mustache templates for loader and report views |
-
-## Database Tables
-
-### `quizaccess_autoproctor`
-
-Quiz-level settings storage.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| id | int | Primary key |
-| quiz_id | int | Foreign key to quiz |
-| proctoring_enabled | int | Whether proctoring is enabled (0/1) |
-| tracking_options | text | JSON of enabled tracking options |
-| timecreated | int | Timestamp |
-| timemodified | int | Timestamp |
-
-### `quizaccess_autoproctor_sessions`
-
-Per-attempt proctoring session storage.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| id | int | Primary key |
-| quiz_id | int | Foreign key to quiz |
-| quiz_attempt_id | int | Foreign key to quiz_attempts |
-| test_attempt_id | char | Unique AutoProctor attempt identifier |
-| tracking_options | text | JSON of tracking options for this session |
-| started_at | int | Session start timestamp |
-| timecreated | int | Timestamp |
-| timemodified | int | Timestamp |
-
-## Installation
-
-1. Copy the `autoproctor` folder to `/mod/quiz/accessrule/`
-2. Visit Site Administration > Notifications to install the plugin
-3. Configure the plugin at Site Administration > Plugins > Activity modules > Quiz > AutoProctor Integration
-
-## Configuration
-
-### Admin Settings
-
-Navigate to **Site Administration > Plugins > Activity modules > Quiz > AutoProctor Integration**
-
-- **Client ID**: Your AutoProctor Client ID from the dashboard
-- **Client Secret**: Your AutoProctor Client Secret from the dashboard
-- **Enable by default**: Whether to enable AutoProctor for all new quizzes by default
-
-### Per-Quiz Settings
-
-When editing a quiz, expand the **AutoProctor Settings** section to:
-
-1. Enable/disable AutoProctor for the quiz
-2. Configure individual tracking options
-
-## External Dependencies
-
-- AutoProctor SDK (loaded from CDN)
-- CryptoJS for HMAC-SHA256 hashing
-- Requires credentials from [autoproctor.co](https://autoproctor.co)
+| **Activity** | Audio detection, Multiple person detection, Tab switch detection |
+| **Camera** | Photo at test start, Random photos during test, Live camera preview |
+| **Screen** | Screenshot on tab switch, Full session recording, Multiple monitor detection, Forced fullscreen |
 
 ## Requirements
 
-- Moodle 4.1+ (version 2022112800)
-- `theme_boost` (or compatible theme)
+- Moodle 4.1 or higher
+- AutoProctor account with API credentials ([Get credentials](https://autoproctor.co/developers/register/))
+- Students need: webcam, microphone, and a modern browser (Chrome/Firefox/Edge)
+
+## Installation
+
+### Method 1: Upload via Moodle Admin
+
+1. Download the plugin ZIP file
+2. Go to **Site Administration > Plugins > Install plugins**
+3. Upload the ZIP file and click "Install plugin from the ZIP file"
+4. Follow the on-screen prompts to complete installation
+
+### Method 2: Manual Installation
+
+1. Extract the plugin to `/mod/quiz/accessrule/autoproctor`
+2. Visit **Site Administration > Notifications** to trigger the installation
+3. Follow the on-screen prompts
+
+## Configuration
+
+### Step 1: Add API Credentials
+
+1. Go to **Site Administration > Plugins > Activity modules > Quiz > AutoProctor Integration**
+2. Enter your **Client ID** and **Client Secret** from your AutoProctor dashboard
+3. Optionally enable "Enable AutoProctor by default" for all new quizzes
+4. Save changes
+
+### Step 2: Enable on a Quiz
+
+1. Edit any quiz and expand the **AutoProctor Settings** section
+2. Set "Turn AutoProctor On" to **Yes**
+3. Configure individual tracking options as needed
+4. Save the quiz
+
+## Usage
+
+### For Teachers/Administrators
+
+**Enabling Proctoring:**
+1. Edit the quiz settings
+2. Scroll to "AutoProctor Settings"
+3. Enable proctoring and select desired tracking options
+4. Save changes
+
+**Viewing Reports:**
+1. Go to the quiz page
+2. Click the "View AutoProctor Results" button (visible to teachers/managers)
+3. Review trust scores, flagged events, and session recordings
+
+### For Students
+
+1. Navigate to the proctored quiz
+2. Click "Attempt quiz"
+3. Review the permissions required (camera, microphone, screen)
+4. Check the consent box and click "Start attempt"
+5. Allow browser permissions when prompted
+6. Wait for AutoProctor to initialize
+7. Complete the quiz as normal
+8. Submit the quiz - proctoring stops automatically
+
+## Permissions
+
+The plugin adds one capability:
+
+| Capability | Description | Default Roles |
+|------------|-------------|---------------|
+| `quizaccess/autoproctor:viewreport` | View proctoring reports | Teacher, Editing Teacher, Manager |
+
+## Troubleshooting
+
+### "AutoProctor credentials are not set"
+- Ensure Client ID and Client Secret are configured in plugin settings
+- Verify credentials are correct from your AutoProctor dashboard
+
+### Proctoring won't start
+- Check browser permissions for camera/microphone/screen sharing
+- Try a different browser (Chrome recommended)
+- Disable browser extensions that might block permissions
+- Ensure stable internet connection
+
+### Students can't access the quiz
+- Verify the quiz has AutoProctor enabled
+- Check that students have accepted the consent checkbox
+- Ensure students are using a compatible browser
+
+## Privacy & Data
+
+AutoProctor collects:
+- Webcam photos/video
+- Audio from microphone
+- Screen recordings (if enabled)
+- Tab switch events
+- Multiple person detection events
+
+All data is processed by AutoProctor's servers. Review [AutoProctor's Privacy Policy](https://autoproctor.co/privacy) for details on data handling and retention.
+
+## Support
+
+- **Documentation**: [AutoProctor Help Center](https://help.autoproctor.co/)
+- **Issues**: Report bugs on the plugin repository
+- **Contact**: support@autoproctor.co
+
+## Development
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for developer documentation.
 
 ## License
 
-GNU GPL v3 or later - http://www.gnu.org/copyleft/gpl.html
+This plugin is licensed under the GNU GPL v3 or later.
 
-## Author
+http://www.gnu.org/copyleft/gpl.html
 
-AutoProctor (autoproctor.co)
+## Credits
+
+Developed by [AutoProctor](https://autoproctor.co)
