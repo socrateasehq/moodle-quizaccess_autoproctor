@@ -411,13 +411,17 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         $page->requires->js(new moodle_url('https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.js'), true);
         $page->requires->css(new moodle_url('https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.css'));
 
+        // Get tracking options from session to determine which tabs to show
+        $tracking_options = json_decode($session->tracking_options, true) ?? [];
+
         // Call JS to add the report button
         $page->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'addReportButton', [
             'reportUrl' => $reportUrl,
             'buttonLabel' => $buttonLabel,
             'clientId' => $clientId,
             'clientSecret' => $clientSecret,
-            'testAttemptId' => $session->test_attempt_id
+            'testAttemptId' => $session->test_attempt_id,
+            'trackingOptions' => $tracking_options
         ]);
     }
 

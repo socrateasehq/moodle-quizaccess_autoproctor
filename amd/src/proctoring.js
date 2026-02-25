@@ -56,13 +56,14 @@ define(["jquery", "core/templates"], function ($, Templates) {
 
     /**
      * Generates the report options object required by AutoProctor.
+     * @param {boolean} includeSessionRecording - Whether to include session recording in the report
      * @returns {object}
      */
-    const getReportOptions = () => {
+    const getReportOptions = (includeSessionRecording = true) => {
         return {
             showProctoringOverview: true,
             showProctoringSummary: true,
-            showSessionRecording: true,
+            showSessionRecording: includeSessionRecording,
             proctoringSummaryDOMId: "ap-report__proctor",
             proctoringOverviewDOMId: "ap-report__overview",
             sessionRecordingDOMId: "ap-report__session",
@@ -511,18 +512,19 @@ define(["jquery", "core/templates"], function ($, Templates) {
      * @param {string} clientId
      * @param {string} clientSecret
      * @param {string} testAttemptId
+     * @param {boolean} includeSessionRecording - Whether to include session recording in the report
      * @returns {void}
      */
-    function loadReport(clientId, clientSecret, testAttemptId) {
+    function loadReport(clientId, clientSecret, testAttemptId, includeSessionRecording = true) {
         // Check if AutoProctor is already loaded and retry if not
         if (typeof window.AutoProctor === "undefined") {
-            setTimeout(() => loadReport(clientId, clientSecret, testAttemptId), 1000);
+            setTimeout(() => loadReport(clientId, clientSecret, testAttemptId, includeSessionRecording), 1000);
             return;
         }
 
         const credentials = getCredentials(clientId, clientSecret, testAttemptId);
         const apInstance = new window.AutoProctor(credentials);
-        apInstance.showReport(getReportOptions());
+        apInstance.showReport(getReportOptions(includeSessionRecording));
     }
 
     /**
@@ -576,8 +578,11 @@ define(["jquery", "core/templates"], function ($, Templates) {
      * @param {string} clientId - The AutoProctor client ID
      * @param {string} clientSecret - The AutoProctor client secret
      * @param {string} testAttemptId - The test attempt ID for this session
+     * @param {object} trackingOptions - The tracking options used for this session (to determine which tabs to show)
      */
-    function addReportButton(reportUrl, buttonLabel, clientId, clientSecret, testAttemptId) {
+    function addReportButton(reportUrl, buttonLabel, clientId, clientSecret, testAttemptId, trackingOptions) {
+        // Determine if session recording was enabled for this attempt
+        const showSessionRecording = trackingOptions?.recordSession !== false;
         // Track if report has been loaded
         let reportLoaded = false;
 
@@ -587,8 +592,13 @@ define(["jquery", "core/templates"], function ($, Templates) {
 
         // Tab switching helper function
         const switchTab = (activeTabId) => {
-            const tabs = ["test-summary-tab", "proctoring-summary-tab", "session-recording-tab"];
-            const contents = ["ap-test-summary-content", "ap-report-content", "ap-report__session"];
+            // Only include session recording tab if it was enabled
+            const tabs = showSessionRecording
+                ? ["test-summary-tab", "proctoring-summary-tab", "session-recording-tab"]
+                : ["test-summary-tab", "proctoring-summary-tab"];
+            const contents = showSessionRecording
+                ? ["ap-test-summary-content", "ap-report-content", "ap-report__session"]
+                : ["ap-test-summary-content", "ap-report-content"];
 
             tabs.forEach((tabId, index) => {
                 const tab = document.getElementById(tabId);
@@ -605,7 +615,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
                     // Load proctoring report when switching to proctoring tab (lazy load)
                     if (tabId === "proctoring-summary-tab" && !reportLoaded) {
                         reportLoaded = true;
-                        loadReport(clientId, clientSecret, testAttemptId);
+                        loadReport(clientId, clientSecret, testAttemptId, showSessionRecording);
 
                         // Hide loader and show content after a delay
                         setTimeout(() => {
@@ -654,6 +664,14 @@ define(["jquery", "core/templates"], function ($, Templates) {
             const tabsBar = document.createElement("div");
             tabsBar.id = "ap-tabs-container";
             tabsBar.style.cssText = "margin: 20px 0;";
+            // Build session recording tab HTML only if enabled
+            const sessionRecordingTabHtml = showSessionRecording
+                ? `<div id="session-recording-tab"
+                         style="${inactiveTabStyle} cursor: pointer; white-space: nowrap;">
+                        Session Recording
+                    </div>`
+                : "";
+
             tabsBar.innerHTML = `
                 <div id="ap-report-tabs" style="display: flex; gap: 24px; font-size: 16px;
                             background: white; border: 1px solid #e5e7eb; border-radius: 8px;
@@ -666,10 +684,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
                          style="${inactiveTabStyle} cursor: pointer; white-space: nowrap;">
                         Proctoring Summary
                     </div>
-                    <div id="session-recording-tab"
-                         style="${inactiveTabStyle} cursor: pointer; white-space: nowrap;">
-                        Session Recording
-                    </div>
+                    ${sessionRecordingTabHtml}
                     <a href="${reportUrl}" target="_blank"
                        style="margin-left: auto; color: #106bbf; font-size: 14px; text-decoration: none;
                               display: flex; align-items: center; gap: 4px;">
@@ -705,10 +720,13 @@ define(["jquery", "core/templates"], function ($, Templates) {
                 </div>
             `;
 
-            // Create session recording container
-            const sessionContainer = document.createElement("div");
-            sessionContainer.id = "ap-report__session";
-            sessionContainer.style.cssText = "display: none;";
+            // Create session recording container only if enabled
+            let sessionContainer = null;
+            if (showSessionRecording) {
+                sessionContainer = document.createElement("div");
+                sessionContainer.id = "ap-report__session";
+                sessionContainer.style.cssText = "display: none;";
+            }
 
             // Collect all siblings that come AFTER the summaryWrapper (questions, submit buttons, etc.)
             const allChildren = Array.from(mainContent.children);
@@ -724,10 +742,12 @@ define(["jquery", "core/templates"], function ($, Templates) {
             // Insert tabs bar after the summary wrapper
             summaryWrapper.after(tabsBar);
 
-            // Insert the three content containers after tabs bar
+            // Insert content containers after tabs bar
             tabsBar.after(testSummaryWrapper);
             testSummaryWrapper.after(proctoringContainer);
-            proctoringContainer.after(sessionContainer);
+            if (sessionContainer) {
+                proctoringContainer.after(sessionContainer);
+            }
 
             // Move all the quiz content (questions, etc.) into test summary wrapper
             contentToWrap.forEach(element => {
@@ -737,11 +757,15 @@ define(["jquery", "core/templates"], function ($, Templates) {
             // Set up tab click handlers
             const testTab = document.getElementById("test-summary-tab");
             const proctoringTab = document.getElementById("proctoring-summary-tab");
-            const sessionTab = document.getElementById("session-recording-tab");
 
             testTab?.addEventListener("click", () => switchTab("test-summary-tab"));
             proctoringTab?.addEventListener("click", () => switchTab("proctoring-summary-tab"));
-            sessionTab?.addEventListener("click", () => switchTab("session-recording-tab"));
+
+            // Only add session recording tab listener if it exists
+            if (showSessionRecording) {
+                const sessionTab = document.getElementById("session-recording-tab");
+                sessionTab?.addEventListener("click", () => switchTab("session-recording-tab"));
+            }
         };
 
         // Start trying to insert the tabs
