@@ -49,7 +49,7 @@ $string['tracking_captureSwitchedTab'] = 'Capture Switched Tab';
 $string['tracking_photosAtRandom'] = 'Take photos at random';
 $string['tracking_recordSession'] = 'Record Users screen session';
 $string['tracking_detectMultipleScreens'] = 'Detect Multiple Screens';
-$string['tracking_testTakerPhoto'] = 'Take photo of test taker in the beginning of the test';
+$string['tracking_testTakerPhoto'] = 'Take photo of test taker';
 $string['tracking_showCamPreview'] = 'Show camera preview';
 $string['tracking_forceFullScreen'] = 'Force full screen';
 

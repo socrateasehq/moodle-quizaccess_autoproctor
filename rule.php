@@ -105,21 +105,20 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         ];
 
         foreach ($tracking_options as $group => $options) {
-            // Add group with indentation
+            // Add group header
             $mform->addElement(
                 'static',
                 $group . '_header',
                 '',
-                '<div class="ml-4 font-weight-bold">' . get_string('tracking_group_' . $group, 'quizaccess_autoproctor') . '</div>'
+                '<strong>' . get_string('tracking_group_' . $group, 'quizaccess_autoproctor') . '</strong>'
             );
 
             foreach ($options as $option => $string) {
                 $element_name = "tracking_{$option}";
-                // Add extra indentation for options
                 $mform->addElement(
                     'selectyesno',
                     $element_name,
-                    '<div class="ml-5">' . $string . '</div>'
+                    $string
                 );
                 $mform->addHelpButton($element_name, "tracking_{$option}", 'quizaccess_autoproctor');
                 $mform->setDefault($element_name, $ap_settings->tracking_options[$option] ?? 1);
