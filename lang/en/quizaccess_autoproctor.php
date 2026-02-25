@@ -30,6 +30,8 @@ $string['proctoringpermissions'] = '<ul style="display: block; list-style-type: 
 $string['autoproctorresults'] = 'View AutoProctor Results';
 $string['autoproctorresultslink'] = 'https://autoproctor.co/test-admin/developers/results/';
 $string['autoproctor:viewreport'] = 'View AutoProctor Results';
+$string['viewattemptreport'] = 'View Proctoring Report';
+$string['viewattemptreportlink'] = 'https://www.autoproctor.co/test-admin/developers/test-attempts/';
 
 // AutoProctor settings
 $string['autoproctorsettings'] = 'AutoProctor Settings';

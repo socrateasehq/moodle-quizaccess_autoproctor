@@ -361,6 +361,67 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     }
 
     /**
+     * Sets up the attempt (review or summary) page with any special extra
+     * properties required by this rule.
+     *
+     * @param moodle_page $page the page object to initialise.
+     */
+    public function setup_attempt_page($page) {
+        global $DB, $USER;
+
+        // Only add report button on review.php
+        $is_review_page = strpos($page->url->get_path(), '/mod/quiz/review.php') !== false;
+        if (!$is_review_page) {
+            return;
+        }
+
+        // Check if user has permission to view reports
+        $context = context_module::instance($this->quizobj->get_quiz()->cmid, MUST_EXIST);
+        if (!has_capability('quizaccess/autoproctor:viewreport', $context, $USER->id)) {
+            return;
+        }
+
+        // Get the attempt ID from URL
+        $attemptid = optional_param('attempt', 0, PARAM_INT);
+        if (empty($attemptid)) {
+            return;
+        }
+
+        // Get the session for this attempt
+        $session = self::get_ap_session($attemptid);
+        if (!$session || empty($session->test_attempt_id)) {
+            return;
+        }
+
+        // Get credentials
+        $clientId = get_config('quizaccess_autoproctor', 'client_id');
+        $clientSecret = get_config('quizaccess_autoproctor', 'client_secret');
+
+        if (empty($clientId) || empty($clientSecret)) {
+            return;
+        }
+
+        // Build the report URL
+        $reportBaseUrl = get_string('viewattemptreportlink', 'quizaccess_autoproctor');
+        $reportUrl = $reportBaseUrl . $session->test_attempt_id . '/';
+        $buttonLabel = get_string('viewattemptreport', 'quizaccess_autoproctor');
+
+        // Include the AutoProctor SDK for report viewing
+        $page->requires->js(new moodle_url('https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js'), true);
+        $page->requires->js(new moodle_url('https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.js'), true);
+        $page->requires->css(new moodle_url('https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.css'));
+
+        // Call JS to add the report button
+        $page->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'addReportButton', [
+            'reportUrl' => $reportUrl,
+            'buttonLabel' => $buttonLabel,
+            'clientId' => $clientId,
+            'clientSecret' => $clientSecret,
+            'testAttemptId' => $session->test_attempt_id
+        ]);
+    }
+
+    /**
      * Get a button to view the Proctoring report.
      *
      * @return string A link to view report
