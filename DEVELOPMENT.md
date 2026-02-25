@@ -170,17 +170,30 @@ Used for HMAC-SHA256 hashing of test attempt IDs:
 
 ### CLI Commands
 
-Use MAMP's PHP for CLI commands:
+Use MAMP's PHP for CLI commands. Add these aliases to `~/.zshrc`:
 
 ```bash
-# Create alias (add to ~/.zshrc)
+# PHP alias for MAMP
 alias mphp='/Applications/MAMP/bin/php/php8.3.30/bin/php'
 
-# Purge caches
-mphp admin/cli/purge_caches.php
+# Quick aliases for common Moodle commands (run from Moodle root)
+alias mcache='/Applications/MAMP/bin/php/php8.3.30/bin/php admin/cli/purge_caches.php'
+alias mupgrade='/Applications/MAMP/bin/php/php8.3.30/bin/php admin/cli/upgrade.php'
+```
 
-# Run upgrades
-mphp admin/cli/upgrade.php
+After adding, run `source ~/.zshrc` to reload.
+
+**Usage:**
+
+```bash
+# Purge all caches (run after changing language strings, templates, etc.)
+mcache
+
+# Run database upgrades (run after changing version.php or db files)
+mupgrade
+
+# Or use mphp for any CLI script
+mphp admin/cli/purge_caches.php
 ```
 
 ### Building JavaScript
