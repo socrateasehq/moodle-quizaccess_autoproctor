@@ -171,16 +171,20 @@ define(["jquery", "core/templates"], function ($, Templates) {
         if (fileLocation === "summary.php") {
             // Handle quiz submission process
             const handleFinalSubmit = ($finalSubmitBtn) => {
-                $finalSubmitBtn.addEventListener("click", async () => {
+                $finalSubmitBtn.addEventListener("click", async (e) => {
                     if (proctoringInProgress) {
+                        // Prevent Moodle's redirect until AutoProctor finishes
+                        e.preventDefault();
+                        e.stopPropagation();
+
                         await _apInstance?.stop();
                         window.addEventListener("apMonitoringStopped", () => {
                             proctoringInProgress = false;
-                            window.location.href = newUrl;
+                            // Now manually click the button to trigger Moodle's submission
+                            $finalSubmitBtn.click();
                         });
-                    } else {
-                        window.location.href = newUrl;
                     }
+                    // If not proctoring, let the default behavior proceed
                 });
             };
 
@@ -206,6 +210,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
                 proctoringInProgress = false;
                 window.location.href = newUrl;
             });
+            return; // Wait for apMonitoringStopped before redirecting
         }
 
         // Create new AP session on attempt.php
