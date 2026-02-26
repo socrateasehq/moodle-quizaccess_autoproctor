@@ -9,9 +9,21 @@ Quick guide to get up and running with development.
 - **Node.js 16+**
 - **AutoProctor credentials** - Contact the team for dev/test credentials
 
+## Getting Moodle
+
+Clone the official Moodle repository:
+
+```bash
+git clone https://github.com/moodle/moodle.git ~/Projects/moodle
+cd ~/Projects/moodle
+git checkout MOODLE_401_STABLE  # or MOODLE_404_STABLE for 4.4
+```
+
+Then set up a local server (MAMP, Docker, etc.) to serve it.
+
 ## MAMP Setup (macOS)
 
-If you don't have a local Moodle installation yet:
+If you need a local PHP/MySQL server:
 
 1. **Install [MAMP](https://www.mamp.info/en/downloads/)**
 2. **Set Document Root** → MAMP Preferences → Web Server → Set to your Moodle directory
@@ -48,10 +60,10 @@ Then reload: `source ~/.zshrc`
 git clone git@github.com:socrateasehq/autoproctor-moodle.git ~/Projects/autoproctor-moodle
 
 # 2. Symlink into Moodle
-ln -s ~/Projects/autoproctor-moodle /path/to/moodle/mod/quiz/accessrule/autoproctor
+ln -s ~/Projects/autoproctor-moodle ~/Projects/moodle/mod/quiz/accessrule/autoproctor
 
 # 3. Install grunt (from Moodle root)
-cd /path/to/moodle && npm install
+cd ~/Projects/moodle && npm install
 
 # 4. Install the plugin
 mupgrade
@@ -75,7 +87,7 @@ mupgrade
 ### Building JavaScript
 
 ```bash
-# From Moodle root
+cd ~/Projects/moodle
 npx grunt amd --component=quizaccess_autoproctor
 mcache
 ```
