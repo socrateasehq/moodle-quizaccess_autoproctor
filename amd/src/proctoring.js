@@ -478,6 +478,11 @@ define(["jquery", "core/templates"], function ($, Templates) {
      * @returns {Promise<void>}
      */
     async function initAutoProctor(clientId, clientSecret, testAttemptId, trackingOptions, cmid, lookupKey) {
+        // Don't initialize if we're inside an iframe (prevents double initialization on redirect pages)
+        if (window !== window.top) {
+            return;
+        }
+
         // Check if AutoProctor is already loaded and retry if not
         if (typeof window.AutoProctor === "undefined") {
             setTimeout(
