@@ -43,6 +43,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     private const AP_CDN_DEVELOPMENT = 'https://ap-development.s3.ap-south-1.amazonaws.com/ap-entry-moodle.js';
     private const AP_DOMAIN_PRODUCTION = 'https://autoproctor.co';
     private const AP_DOMAIN_DEVELOPMENT = 'https://dev.autoproctor.co';
+    // CryptoJS is required by the AutoProctor SDK (not for our hashing - that's done server-side)
     private const CRYPTOJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js';
 
     /** @var quizaccess_autoproctor_quiz_settings_class_alias */
@@ -283,16 +284,19 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         // Get environment configuration
         $envConfig = self::get_environment_config();
 
-        // Include the scripts and styles
+        // Include CryptoJS (required by AutoProctor SDK) and the SDK itself
         $PAGE->requires->js(new moodle_url(self::CRYPTOJS_URL), true);
         $PAGE->requires->js(new moodle_url($envConfig['apEntryUrl']), true);
 
         $this->testAttemptId = $testAttemptId;
 
+        // Compute hash server-side to avoid exposing client secret to browser
+        $hashedTestAttemptId = self::hash_test_attempt_id($testAttemptId, $creds['clientSecret']);
+
         // Include necessary scripts/styles for AutoProctor during preflight check
         $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'init', [
             'clientId' => $creds['clientId'],
-            'clientSecret' => $creds['clientSecret'],
+            'hashedTestAttemptId' => $hashedTestAttemptId,
             'testAttemptId' => $testAttemptId,
             'trackingOptions' => $tracking_options,
             'cmid' => $this->quizobj->get_quiz()->cmid,
@@ -405,6 +409,20 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     }
 
     /**
+     * Generate HMAC-SHA256 hash of test attempt ID for SDK authentication.
+     * This is computed server-side to avoid exposing the client secret to the browser.
+     *
+     * @param string $testAttemptId The test attempt ID to hash
+     * @param string $clientSecret The client secret key
+     * @return string Base64-encoded HMAC-SHA256 hash
+     */
+    private static function hash_test_attempt_id(string $testAttemptId, string $clientSecret): string
+    {
+        $hash = hash_hmac('sha256', $testAttemptId, $clientSecret, true);
+        return base64_encode($hash);
+    }
+
+    /**
      * Sets up the attempt (review or summary) page with any special extra
      * properties required by this rule.
      *
@@ -451,19 +469,22 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         $reportUrl = $reportBaseUrl . $session->test_attempt_id . '/';
         $buttonLabel = get_string('viewattemptreport', 'quizaccess_autoproctor');
 
-        // Include the AutoProctor SDK for report viewing
+        // Include CryptoJS (required by AutoProctor SDK) and the SDK itself
         $page->requires->js(new moodle_url(self::CRYPTOJS_URL), true);
         $page->requires->js(new moodle_url($envConfig['apEntryUrl']), true);
 
         // Get tracking options from session to determine which tabs to show
         $tracking_options = json_decode($session->tracking_options, true) ?? [];
 
+        // Compute hash server-side to avoid exposing client secret to browser
+        $hashedTestAttemptId = self::hash_test_attempt_id($session->test_attempt_id, $creds['clientSecret']);
+
         // Call JS to add the report button
         $page->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'addReportButton', [
             'reportUrl' => $reportUrl,
             'buttonLabel' => $buttonLabel,
             'clientId' => $creds['clientId'],
-            'clientSecret' => $creds['clientSecret'],
+            'hashedTestAttemptId' => $hashedTestAttemptId,
             'testAttemptId' => $session->test_attempt_id,
             'trackingOptions' => $tracking_options,
             'apDomain' => $envConfig['apDomain'],

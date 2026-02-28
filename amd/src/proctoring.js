@@ -36,39 +36,23 @@ define(["jquery", "core/templates"], function ($, Templates) {
     let $apIframeLoader;
 
     /**
-     * Generates a hashed version of the provided testAttemptId with the provided clientSecret
-     * using HMAC with SHA256 for authentication.
-     * @param {string} testAttemptId
-     * @param {string} clientSecret
-     * @returns {string}
-     */
-    function getHashTestAttemptId(testAttemptId, clientSecret) {
-        const secretWordArray = window.CryptoJS.enc.Utf8.parse(clientSecret);
-        const messageWordArray = window.CryptoJS.enc.Utf8.parse(testAttemptId);
-        const hash = window.CryptoJS.HmacSHA256(messageWordArray, secretWordArray);
-        const base64HashedString = window.CryptoJS.enc.Base64.stringify(hash);
-        return base64HashedString;
-    }
-
-    /**
      * Generates the credentials object required by AutoProctor.
+     * The hashedTestAttemptId is computed server-side to avoid exposing the client secret.
      * @param {string} clientId
-     * @param {string} clientSecret
+     * @param {string} hashedTestAttemptId - Pre-computed HMAC-SHA256 hash (base64 encoded)
      * @param {string} testAttemptId
      * @param {string} apDomain - The AutoProctor API domain
      * @param {string} apEnv - The environment (development/production)
      * @returns {object}
      */
-    function getCredentials(clientId, clientSecret, testAttemptId, apDomain, apEnv) {
-        const hashedTestAttemptId = getHashTestAttemptId(testAttemptId, clientSecret);
-        const creds = {
+    function getCredentials(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv) {
+        return {
             clientId,
             testAttemptId,
             hashedTestAttemptId,
             domain: apDomain || "https://autoproctor.co",
             environment: apEnv || "production",
         };
-        return creds;
     }
 
     /**
@@ -537,7 +521,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
      * @function
      * @name initAutoProctor
      * @param {string} clientId
-     * @param {string} clientSecret
+     * @param {string} hashedTestAttemptId - Pre-computed HMAC-SHA256 hash (base64 encoded)
      * @param {string} testAttemptId
      * @param {object} trackingOptions
      * @param {number} cmid
@@ -549,7 +533,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
     // Track SDK loading retries
     let _sdkRetryCount = 0;
 
-    async function initAutoProctor(clientId, clientSecret, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv) {
+    async function initAutoProctor(clientId, hashedTestAttemptId, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv) {
         // Don't initialize if we're inside an iframe (prevents double initialization on redirect pages)
         if (window !== window.top) {
             return;
@@ -576,7 +560,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
 
             console.log(`[AP] Waiting for AutoProctor SDK (attempt ${_sdkRetryCount}/${CONFIG.SDK_MAX_RETRIES})...`);
             setTimeout(
-                () => initAutoProctor(clientId, clientSecret, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv),
+                () => initAutoProctor(clientId, hashedTestAttemptId, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv),
                 CONFIG.SDK_RETRY_DELAY_MS
             );
             return;
@@ -590,7 +574,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
         _apEnv = apEnv ?? "production";
 
         // Initialize AutoProctor instance
-        const credentials = getCredentials(clientId, clientSecret, testAttemptId, _apDomain, _apEnv);
+        const credentials = getCredentials(clientId, hashedTestAttemptId, testAttemptId, _apDomain, _apEnv);
         _apInstance = new window.AutoProctor(credentials);
 
         addIframe();
@@ -612,7 +596,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
     /**
      * Loads the report for the given test attempt ID.
      * @param {string} clientId
-     * @param {string} clientSecret
+     * @param {string} hashedTestAttemptId - Pre-computed HMAC-SHA256 hash (base64 encoded)
      * @param {string} testAttemptId
      * @param {string} apDomain - The AutoProctor API domain
      * @param {string} apEnv - The environment (development/production)
@@ -621,7 +605,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
     // Track SDK loading retries for loadReport
     let _reportSdkRetryCount = 0;
 
-    function loadReport(clientId, clientSecret, testAttemptId, apDomain, apEnv) {
+    function loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv) {
         // Check if AutoProctor is already loaded and retry if not
         if (typeof window.AutoProctor === "undefined" || typeof window.AutoProctor !== "function") {
             _reportSdkRetryCount++;
@@ -641,11 +625,11 @@ define(["jquery", "core/templates"], function ($, Templates) {
             }
 
             console.log(`[AP] Waiting for AutoProctor SDK for report (attempt ${_reportSdkRetryCount}/${CONFIG.SDK_MAX_RETRIES})...`);
-            setTimeout(() => loadReport(clientId, clientSecret, testAttemptId, apDomain, apEnv), CONFIG.SDK_RETRY_DELAY_MS);
+            setTimeout(() => loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv), CONFIG.SDK_RETRY_DELAY_MS);
             return;
         }
 
-        const credentials = getCredentials(clientId, clientSecret, testAttemptId, apDomain, apEnv);
+        const credentials = getCredentials(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv);
         const apInstance = new window.AutoProctor(credentials);
         apInstance.showReport(getReportOptions());
     }
@@ -699,13 +683,13 @@ define(["jquery", "core/templates"], function ($, Templates) {
      * @param {string} reportUrl - The URL to the report (fallback external link)
      * @param {string} buttonLabel - The label for the button (unused, kept for compatibility)
      * @param {string} clientId - The AutoProctor client ID
-     * @param {string} clientSecret - The AutoProctor client secret
+     * @param {string} hashedTestAttemptId - Pre-computed HMAC-SHA256 hash (base64 encoded)
      * @param {string} testAttemptId - The test attempt ID for this session
      * @param {object} trackingOptions - The tracking options used for this session (to determine which tabs to show)
      * @param {string} apDomain - The AutoProctor API domain
      * @param {string} apEnv - The environment (development/production)
      */
-    function addReportButton(reportUrl, buttonLabel, clientId, clientSecret, testAttemptId, trackingOptions, apDomain, apEnv) {
+    function addReportButton(reportUrl, buttonLabel, clientId, hashedTestAttemptId, testAttemptId, trackingOptions, apDomain, apEnv) {
         // Determine if session recording was enabled for this attempt
         const showSessionRecording = trackingOptions?.recordSession !== false;
         // Track if report has been loaded
@@ -740,7 +724,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
                     // Load proctoring report when switching to proctoring tab (lazy load)
                     if (tabId === "proctoring-summary-tab" && !reportLoaded) {
                         reportLoaded = true;
-                        loadReport(clientId, clientSecret, testAttemptId, apDomain, apEnv);
+                        loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv);
 
                         // Hide loader and show content after a delay
                         setTimeout(() => {
