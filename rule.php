@@ -41,7 +41,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     // Environment URLs
     private const AP_CDN_PRODUCTION = 'https://cdn.autoproctor.co/ap-entry-moodle.js';
     private const AP_CDN_DEVELOPMENT = 'https://ap-development.s3.ap-south-1.amazonaws.com/ap-entry-moodle.js';
-    private const AP_DOMAIN_PRODUCTION = 'https://autoproctor.co';
+    private const AP_DOMAIN_PRODUCTION = 'https://www.autoproctor.co';
     private const AP_DOMAIN_DEVELOPMENT = 'https://dev.autoproctor.co';
     // CryptoJS is required by the AutoProctor SDK (not for our hashing - that's done server-side)
     private const CRYPTOJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js';
