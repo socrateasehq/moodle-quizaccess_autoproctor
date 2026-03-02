@@ -533,11 +533,108 @@ define(["jquery", "core/templates"], function ($, Templates) {
     // Track SDK loading retries
     let _sdkRetryCount = 0;
 
+    /**
+     * Disables the preflight form submit button and shows loading state.
+     * This prevents users from starting the quiz before AutoProctor is ready.
+     * @param {HTMLElement} $submitBtn - The submit button element
+     * @param {boolean} disabled - Whether to disable or enable
+     * @param {string} loadingText - Text to show while loading (optional)
+     */
+    function setSubmitButtonState($submitBtn, disabled, loadingText = null) {
+        if (!$submitBtn) return;
+
+        $submitBtn.disabled = disabled;
+
+        if (disabled) {
+            // Store original text and show loading state
+            if (!$submitBtn.dataset.originalText) {
+                $submitBtn.dataset.originalText = $submitBtn.textContent || $submitBtn.value;
+            }
+            const text = loadingText || "Loading AutoProctor...";
+            if ($submitBtn.tagName === "INPUT") {
+                $submitBtn.value = text;
+            } else {
+                $submitBtn.textContent = text;
+            }
+            $submitBtn.style.opacity = "0.7";
+            $submitBtn.style.cursor = "not-allowed";
+        } else {
+            // Restore original text
+            const originalText = $submitBtn.dataset.originalText;
+            if (originalText) {
+                if ($submitBtn.tagName === "INPUT") {
+                    $submitBtn.value = originalText;
+                } else {
+                    $submitBtn.textContent = originalText;
+                }
+            }
+            $submitBtn.style.opacity = "";
+            $submitBtn.style.cursor = "";
+        }
+    }
+
+    /**
+     * Finds and disables all quiz start/attempt/preview buttons on the page.
+     * This includes both the main page buttons and preflight form submit.
+     * @returns {HTMLElement[]} Array of disabled button elements
+     */
+    function disableQuizStartButtons() {
+        const buttons = [];
+
+        // Find submit button in preflight form (if form is open)
+        const preflightSubmit = document.querySelector(`#${MOODLE_PREFLIGHT_FORM_ID} input[type="submit"]`);
+        if (preflightSubmit) {
+            setSubmitButtonState(preflightSubmit, true);
+            buttons.push(preflightSubmit);
+        }
+
+        // Find main page quiz buttons (Preview quiz, Attempt quiz, Re-attempt quiz, Continue)
+        // These are typically in a form with action pointing to startattempt.php
+        const startAttemptForms = document.querySelectorAll('form[action*="startattempt.php"]');
+        startAttemptForms.forEach(form => {
+            const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+            if (submitBtn) {
+                setSubmitButtonState(submitBtn, true);
+                buttons.push(submitBtn);
+            }
+        });
+
+        // Also look for direct links/buttons that might start attempts
+        const quizButtons = document.querySelectorAll('.quizattempt button, .quizstartbuttondiv button');
+        quizButtons.forEach(btn => {
+            setSubmitButtonState(btn, true);
+            buttons.push(btn);
+        });
+
+        return buttons;
+    }
+
+    /**
+     * Re-enables all previously disabled quiz start buttons.
+     * @param {HTMLElement[]} buttons - Array of button elements to enable
+     */
+    function enableQuizStartButtons(buttons) {
+        buttons.forEach(btn => setSubmitButtonState(btn, false));
+    }
+
+    // Track disabled buttons across retries
+    let _disabledButtons = [];
+
     async function initAutoProctor(clientId, hashedTestAttemptId, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv) {
         // Don't initialize if we're inside an iframe (prevents double initialization on redirect pages)
         if (window !== window.top) {
             return;
         }
+
+        // Immediately try to disable all quiz start buttons to prevent bypass
+        // This runs on every retry to catch when buttons become available
+        const newButtons = disableQuizStartButtons();
+        // Add any newly found buttons to our tracking array
+        newButtons.forEach(btn => {
+            if (!_disabledButtons.includes(btn)) {
+                _disabledButtons.push(btn);
+            }
+        });
 
         // Check if AutoProctor is already loaded and retry if not
         // Also verify it's actually a constructor (not just an object from failed AMD load)
@@ -546,7 +643,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
 
             if (_sdkRetryCount > CONFIG.SDK_MAX_RETRIES) {
                 console.error(`[AP] AutoProctor SDK failed to load after ${CONFIG.SDK_MAX_RETRIES} attempts`);
-                // Show error to user
+                // Show error to user and keep buttons disabled
                 const errorDiv = document.createElement("div");
                 errorDiv.className = "alert alert-danger";
                 errorDiv.style.cssText = "margin: 20px; padding: 15px;";
@@ -555,6 +652,11 @@ define(["jquery", "core/templates"], function ($, Templates) {
                     Please check your internet connection and <a href="javascript:location.reload()">refresh the page</a>.
                 `;
                 document.body.prepend(errorDiv);
+
+                // Update all buttons to show error state (keep disabled)
+                _disabledButtons.forEach(btn => {
+                    setSubmitButtonState(btn, true, "AutoProctor Failed - Refresh Page");
+                });
                 return;
             }
 
@@ -579,6 +681,10 @@ define(["jquery", "core/templates"], function ($, Templates) {
 
         addIframe();
         addPageLoader();
+
+        // AutoProctor is ready - re-enable all previously disabled buttons
+        enableQuizStartButtons(_disabledButtons);
+        _disabledButtons = [];
 
         waitForElement(`#${MOODLE_PREFLIGHT_FORM_ID}`, ($targetElement) => {
             addSubmitPreflightEvent($targetElement);
