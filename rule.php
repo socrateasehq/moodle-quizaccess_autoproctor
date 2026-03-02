@@ -202,7 +202,13 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
      */
     public function description()
     {
-        $messages = [get_string('autoproctor_desc_headsup', 'quizaccess_autoproctor')];
+        // Inline CSS to hide the preflight form when rendered inline (prevents "jumpy" UX)
+        // The form will still be visible when shown in the Moodle YUI dialog (moodle-dialogue-bd)
+        $hideInlineFormCss = '<style>#mod_quiz_preflight_form:not(.moodle-dialogue-bd #mod_quiz_preflight_form){display:none !important;}</style>';
+
+        $messages = [
+            $hideInlineFormCss . get_string('autoproctor_desc_headsup', 'quizaccess_autoproctor')
+        ];
 
         $messages[] = $this->get_download_config_button();
 
