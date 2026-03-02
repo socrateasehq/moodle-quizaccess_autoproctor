@@ -15,11 +15,11 @@
 /* Widen label column for AutoProctor settings to prevent label wrapping */
 #id_autoproctorsettings .col-form-label,
 #id_autoproctorsettings .col-md-3 {
-    flex: 0 0 40%;
-    max-width: 40%;
+    flex: 0 0 50%;
+    max-width: 50%;
 }
 
 #id_autoproctorsettings .col-md-9 {
-    flex: 0 0 60%;
-    max-width: 60%;
+    flex: 0 0 50%;
+    max-width: 50%;
 }
