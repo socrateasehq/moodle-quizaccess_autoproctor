@@ -246,7 +246,10 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         }
 
         // Only set idCardVerification if at least one option is enabled
-        $tracking_options->idCardVerification = $idcard_enabled ? $idcard_config : null;
+        // If all disabled, omit the key entirely from JSON
+        if ($idcard_enabled) {
+            $tracking_options->idCardVerification = $idcard_config;
+        }
 
         $record->tracking_options = json_encode($tracking_options);
 
