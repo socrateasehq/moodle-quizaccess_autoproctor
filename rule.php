@@ -95,24 +95,56 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             )
         );
 
-        // Add nested tracking options
+        // Add nested tracking options (boolean options)
         $tracking_options = [
             'activity' => [
                 'audio' => get_string('tracking_audio', 'quizaccess_autoproctor'),
                 'numHumans' => get_string('tracking_numHumans', 'quizaccess_autoproctor'),
                 'tabSwitch' => get_string('tracking_tabSwitch', 'quizaccess_autoproctor'),
+                'disableCopyPaste' => get_string('tracking_disableCopyPaste', 'quizaccess_autoproctor'),
             ],
             'camera' => [
                 'testTakerPhoto' => get_string('tracking_testTakerPhoto', 'quizaccess_autoproctor'),
                 'photosAtRandom' => get_string('tracking_photosAtRandom', 'quizaccess_autoproctor'),
-                'showCamPreview' => get_string('tracking_showCamPreview', 'quizaccess_autoproctor'),
+                'impersonation' => get_string('tracking_impersonation', 'quizaccess_autoproctor'),
             ],
             'screen' => [
                 'captureSwitchedTab' => get_string('tracking_captureSwitchedTab', 'quizaccess_autoproctor'),
                 'recordSession' => get_string('tracking_recordSession', 'quizaccess_autoproctor'),
                 'detectMultipleScreens' => get_string('tracking_detectMultipleScreens', 'quizaccess_autoproctor'),
                 'forceFullScreen' => get_string('tracking_forceFullScreen', 'quizaccess_autoproctor'),
-            ]
+                'forceDesktop' => get_string('tracking_forceDesktop', 'quizaccess_autoproctor'),
+            ],
+            'security' => [
+                'multiSessionAttempt' => get_string('tracking_multiSessionAttempt', 'quizaccess_autoproctor'),
+                'auxiliaryDevice' => get_string('tracking_auxiliaryDevice', 'quizaccess_autoproctor'),
+            ],
+            'idcard' => [
+                'idCardVerification_face' => get_string('tracking_idCardVerification_face', 'quizaccess_autoproctor'),
+                'idCardVerification_name' => get_string('tracking_idCardVerification_name', 'quizaccess_autoproctor'),
+                'idCardVerification_expiryDate' => get_string('tracking_idCardVerification_expiryDate', 'quizaccess_autoproctor'),
+            ],
+        ];
+
+        // Default values for options (false = off by default, true = on by default)
+        $option_defaults = [
+            'audio' => 1,
+            'numHumans' => 1,
+            'tabSwitch' => 1,
+            'disableCopyPaste' => 0,
+            'testTakerPhoto' => 0,
+            'photosAtRandom' => 1,
+            'impersonation' => 0,
+            'captureSwitchedTab' => 1,
+            'recordSession' => 0,
+            'detectMultipleScreens' => 1,
+            'forceFullScreen' => 0,
+            'forceDesktop' => 0,
+            'multiSessionAttempt' => 0,
+            'auxiliaryDevice' => 0,
+            'idCardVerification_face' => 0,
+            'idCardVerification_name' => 0,
+            'idCardVerification_expiryDate' => 0,
         ];
 
         foreach ($tracking_options as $group => $options) {
@@ -132,7 +164,17 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
                     $string
                 );
                 $mform->addHelpButton($element_name, "tracking_{$option}", 'quizaccess_autoproctor');
-                $mform->setDefault($element_name, $ap_settings->tracking_options[$option] ?? 1);
+
+                // Handle idCardVerification options specially (nested structure)
+                if (strpos($option, 'idCardVerification_') === 0) {
+                    $subkey = str_replace('idCardVerification_', '', $option);
+                    $stored_value = $ap_settings->tracking_options['idCardVerification'][$subkey] ?? null;
+                    $default_value = $stored_value !== null ? (int) $stored_value : ($option_defaults[$option] ?? 0);
+                } else {
+                    $default_value = $ap_settings->tracking_options[$option] ?? $option_defaults[$option] ?? 0;
+                }
+
+                $mform->setDefault($element_name, $default_value);
                 $mform->disabledIf($element_name, 'requireautoproctor', 'eq', 0);
                 $mform->setType($element_name, PARAM_INT);
             }
@@ -154,28 +196,58 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
 
         // Prepare tracking options
         $tracking_options = new stdClass();
-        $options = [
-            'audio',
-            'numHumans',
-            'tabSwitch',
-            'captureSwitchedTab',
-            'photosAtRandom',
-            'recordSession',
-            'detectMultipleScreens',
-            'testTakerPhoto',
-            'showCamPreview',
-            'forceFullScreen'
+
+        // Boolean options with their default values
+        $boolean_options = [
+            'audio' => true,
+            'numHumans' => true,
+            'tabSwitch' => true,
+            'disableCopyPaste' => false,
+            'captureSwitchedTab' => true,
+            'photosAtRandom' => true,
+            'recordSession' => false,
+            'detectMultipleScreens' => true,
+            'testTakerPhoto' => false,
+            'forceFullScreen' => false,
+            'forceDesktop' => false,
+            'multiSessionAttempt' => false,
+            'auxiliaryDevice' => false,
+            'impersonation' => false,
         ];
-        foreach ($options as $option) {
+
+        foreach ($boolean_options as $option => $default) {
             $form_field = "tracking_{$option}";
             // If proctoring is enabled, use form values, otherwise keep existing values
             if ($record->proctoring_enabled) {
-                $tracking_options->$option = isset($quiz->$form_field) ? (bool) $quiz->$form_field : true;
+                $tracking_options->$option = isset($quiz->$form_field) ? (bool) $quiz->$form_field : $default;
             } else {
-                $tracking_options->$option = $existing_options[$option] ?? true;
+                $tracking_options->$option = $existing_options[$option] ?? $default;
             }
             unset($quiz->$form_field);
         }
+
+        // Handle idCardVerification as an object (or null if all disabled)
+        $idcard_options = ['face', 'name', 'expiryDate'];
+        $idcard_config = new stdClass();
+        $idcard_enabled = false;
+
+        foreach ($idcard_options as $idopt) {
+            $form_field = "tracking_idCardVerification_{$idopt}";
+            if ($record->proctoring_enabled) {
+                $value = isset($quiz->$form_field) ? (bool) $quiz->$form_field : false;
+            } else {
+                $value = $existing_options['idCardVerification'][$idopt] ?? false;
+            }
+            $idcard_config->$idopt = $value;
+            if ($value) {
+                $idcard_enabled = true;
+            }
+            unset($quiz->$form_field);
+        }
+
+        // Only set idCardVerification if at least one option is enabled
+        $tracking_options->idCardVerification = $idcard_enabled ? $idcard_config : null;
+
         $record->tracking_options = json_encode($tracking_options);
 
         // Insert or update the record
