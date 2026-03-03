@@ -1,15 +1,30 @@
 define(["jquery", "core/templates"], function ($, Templates) {
+    // Constants
     const IFRAME_NAME = "ap-iframe";
     const MOODLE_PREFLIGHT_FORM_ID = "mod_quiz_preflight_form";
     const MOODLE_PAGE_CONTENT_ID = "page-content";
     const MOODLE_FINISH_FORM_SUBMIT_BTN = "#frm-finishattempt button[type='submit']";
     const MOODLE_FINISH_MODAL_SUBMIT_BTN = "div.modal-footer > button.btn.btn-primary";
 
+    // Configuration
+    const CONFIG = {
+        SDK_MAX_RETRIES: 10,
+        SDK_RETRY_DELAY_MS: 1000,
+        SESSION_MAX_RETRIES: 5,
+        SESSION_RETRY_DELAY_MS: 1000,
+        ELEMENT_WAIT_INTERVAL_MS: 500,
+        ELEMENT_WAIT_TIMEOUT_MS: 30000,
+        LOADER_CHECK_INTERVAL_MS: 500,
+        LOADER_CHECK_TIMEOUT_MS: 60000
+    };
+
     // Cached variables
     let _apInstance;
     let _trackingOptions;
     let _testAttemptId;
     let _lookupKey;
+    let _apDomain;
+    let _apEnv;
 
     // Flags
     let isPreflightFormSubmitted = false;
@@ -21,37 +36,23 @@ define(["jquery", "core/templates"], function ($, Templates) {
     let $apIframeLoader;
 
     /**
-     * Generates a hashed version of the provided testAttemptId with the provided clientSecret
-     * using HMAC with SHA256 for authentication.
-     * @param {string} testAttemptId
-     * @param {string} clientSecret
-     * @returns {string}
-     */
-    function getHashTestAttemptId(testAttemptId, clientSecret) {
-        const secretWordArray = window.CryptoJS.enc.Utf8.parse(clientSecret);
-        const messageWordArray = window.CryptoJS.enc.Utf8.parse(testAttemptId);
-        const hash = window.CryptoJS.HmacSHA256(messageWordArray, secretWordArray);
-        const base64HashedString = window.CryptoJS.enc.Base64.stringify(hash);
-        return base64HashedString;
-    }
-
-    /**
      * Generates the credentials object required by AutoProctor.
+     * The hashedTestAttemptId is computed server-side to avoid exposing the client secret.
      * @param {string} clientId
-     * @param {string} clientSecret
+     * @param {string} hashedTestAttemptId - Pre-computed HMAC-SHA256 hash (base64 encoded)
      * @param {string} testAttemptId
+     * @param {string} apDomain - The AutoProctor API domain
+     * @param {string} apEnv - The environment (development/production)
      * @returns {object}
      */
-    function getCredentials(clientId, clientSecret, testAttemptId) {
-        const hashedTestAttemptId = getHashTestAttemptId(testAttemptId, clientSecret);
-        const creds = {
+    function getCredentials(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv) {
+        return {
             clientId,
             testAttemptId,
             hashedTestAttemptId,
-            domain: "https://dev.autoproctor.co", // TODO: Change to production domain before release
-            environment: "development",           // TODO: Change to 'production' before release
+            domain: apDomain || "https://autoproctor.co",
+            environment: apEnv || "production",
         };
-        return creds;
     }
 
     /**
@@ -114,7 +115,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
         const handleUrlChange = () => {
             const currentUrl = $iframe.contentWindow.location.href;
 
-            // Show loading indicator
+            // Show loading indicator while iframe navigates
             $apIframeLoader.classList.remove("aptw-hidden");
 
             // Only process if URL has actually changed
@@ -140,16 +141,26 @@ define(["jquery", "core/templates"], function ($, Templates) {
     };
 
     /**
-     * Hides the loader if the progress is completed
+     * Hides the loader if the progress is completed.
+     * Has a timeout to prevent infinite polling.
+     * @param {number} startTime - Timestamp when polling started (for timeout tracking)
      */
-    const hideLoaderIfProgressCompleted = () => {
+    const hideLoaderIfProgressCompleted = (startTime = Date.now()) => {
         if (isApProgressCompleted) {
-            $apIframeLoader.remove();
-        } else {
-            setTimeout(() => {
-                hideLoaderIfProgressCompleted();
-            }, 500);
+            $apIframeLoader?.remove();
+            return;
         }
+
+        // Check for timeout
+        if (Date.now() - startTime > CONFIG.LOADER_CHECK_TIMEOUT_MS) {
+            console.warn(`[AP] Loader check timed out after ${CONFIG.LOADER_CHECK_TIMEOUT_MS}ms`);
+            $apIframeLoader?.remove();
+            return;
+        }
+
+        setTimeout(() => {
+            hideLoaderIfProgressCompleted(startTime);
+        }, CONFIG.LOADER_CHECK_INTERVAL_MS);
     };
 
     /**
@@ -224,37 +235,57 @@ define(["jquery", "core/templates"], function ($, Templates) {
     };
 
     /**
-     * Creates a new AP session and if it fails, it will retry up to 5 times
+     * Creates a new AP session and if it fails, it will retry up to CONFIG.SESSION_MAX_RETRIES times
      * @param {string} url
      * @param {string} testAttemptId
      * @param {object} trackingOptions
      * @param {number} retriesLeft
      */
-    const createNewApSession = (url, testAttemptId, trackingOptions, retriesLeft = 5) => {
-        try {
-            const params = new URL(url).searchParams;
-            const attemptId = params.get("attempt");
-            const sesskey = M.cfg?.sesskey || document.querySelector('input[name="sesskey"]')?.value;
+    const createNewApSession = (url, testAttemptId, trackingOptions, retriesLeft = CONFIG.SESSION_MAX_RETRIES) => {
+        const params = new URL(url).searchParams;
+        const attemptId = params.get("attempt");
+        const sesskey = M.cfg?.sesskey || document.querySelector('input[name="sesskey"]')?.value;
 
-            fetch(M.cfg.wwwroot + "/mod/quiz/accessrule/autoproctor/create_session.php", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({
-                    sesskey: sesskey,
-                    attemptid: attemptId,
-                    test_attempt_id: testAttemptId,
-                    tracking_options: JSON.stringify(trackingOptions),
-                }),
-            });
-        } catch (error) {
-            if (retriesLeft > 0) {
-                setTimeout(() => createNewApSession(url, testAttemptId, trackingOptions, retriesLeft - 1), 1000);
-            } else {
-                throw error;
-            }
+        if (!attemptId || !sesskey) {
+            console.error("[AP] Missing attemptId or sesskey for session creation");
+            return;
         }
+
+        fetch(M.cfg.wwwroot + "/mod/quiz/accessrule/autoproctor/create_session.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+                sesskey: sesskey,
+                attemptid: attemptId,
+                test_attempt_id: testAttemptId,
+                tracking_options: JSON.stringify(trackingOptions),
+            }),
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    console.error("[AP] Session creation failed:", data.error);
+                }
+            })
+            .catch(error => {
+                console.error("[AP] Session creation error:", error);
+                if (retriesLeft > 0) {
+                    console.log(`[AP] Retrying session creation (${retriesLeft} attempts left)...`);
+                    setTimeout(
+                        () => createNewApSession(url, testAttemptId, trackingOptions, retriesLeft - 1),
+                        CONFIG.SESSION_RETRY_DELAY_MS
+                    );
+                } else {
+                    console.error("[AP] Session creation failed after all retries");
+                }
+            });
     };
 
     /**
@@ -327,7 +358,10 @@ define(["jquery", "core/templates"], function ($, Templates) {
             const { action } = e.detail;
             if (action === "hide") {
                 isApProgressCompleted = true;
-            } else if (action === "show") {
+                // Don't hide loader here - let hideLoaderIfProgressCompleted handle it
+                // after iframe finishes loading
+            } else {
+                // Show progress bar on any progress event (not just action === "show")
                 document.getElementById("ap-progress-text").style.display = "block";
                 document.getElementById("pre-loader-text").style.display = "none";
                 $apIframeLoader?.classList.remove("aptw-hidden");
@@ -419,6 +453,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
                     return;
                 }
 
+                // Show loader while iframe loads
                 $apIframeLoader.classList.remove("aptw-hidden");
                 $preflightForm.setAttribute("target", IFRAME_NAME);
                 $preflightForm.submit();
@@ -447,21 +482,37 @@ define(["jquery", "core/templates"], function ($, Templates) {
 
     /**
      * Waits for an element to appear in the document or iframe (if isInsideIframe is true)
-     * and then calls a callback with the element.
+     * and then calls a callback with the element. Times out after CONFIG.ELEMENT_WAIT_TIMEOUT_MS.
      * @param {string} selector - The CSS selector to search for
      * @param {Function} callback - Function to call with the found element as parameter
      * @param {boolean} isInsideIframe - Whether the element is inside the iframe
      */
     const waitForElement = (selector, callback, isInsideIframe = false) => {
+        const startTime = Date.now();
+
         const elementIntervalId = setInterval(() => {
-            const targetElement = isInsideIframe
-                ? document.getElementById(IFRAME_NAME)?.contentWindow?.document.querySelector(selector)
-                : document.querySelector(selector);
-            if (targetElement) {
+            try {
+                const targetElement = isInsideIframe
+                    ? document.getElementById(IFRAME_NAME)?.contentWindow?.document.querySelector(selector)
+                    : document.querySelector(selector);
+
+                if (targetElement) {
+                    clearInterval(elementIntervalId);
+                    callback(targetElement);
+                    return;
+                }
+
+                // Check for timeout
+                if (Date.now() - startTime > CONFIG.ELEMENT_WAIT_TIMEOUT_MS) {
+                    clearInterval(elementIntervalId);
+                    console.warn(`[AP] Element "${selector}" not found after ${CONFIG.ELEMENT_WAIT_TIMEOUT_MS}ms`);
+                }
+            } catch (err) {
+                // Handle cross-origin errors when accessing iframe content
                 clearInterval(elementIntervalId);
-                callback(targetElement);
+                console.error(`[AP] Error waiting for element "${selector}":`, err);
             }
-        }, 500);
+        }, CONFIG.ELEMENT_WAIT_INTERVAL_MS);
     };
 
     /**
@@ -470,24 +521,149 @@ define(["jquery", "core/templates"], function ($, Templates) {
      * @function
      * @name initAutoProctor
      * @param {string} clientId
-     * @param {string} clientSecret
+     * @param {string} hashedTestAttemptId - Pre-computed HMAC-SHA256 hash (base64 encoded)
      * @param {string} testAttemptId
      * @param {object} trackingOptions
      * @param {number} cmid
      * @param {string} lookupKey
+     * @param {string} apDomain - The AutoProctor API domain
+     * @param {string} apEnv - The environment (development/production)
      * @returns {Promise<void>}
      */
-    async function initAutoProctor(clientId, clientSecret, testAttemptId, trackingOptions, cmid, lookupKey) {
+    // Track SDK loading retries
+    let _sdkRetryCount = 0;
+
+    /**
+     * Disables the preflight form submit button and shows loading state.
+     * This prevents users from starting the quiz before AutoProctor is ready.
+     * @param {HTMLElement} $submitBtn - The submit button element
+     * @param {boolean} disabled - Whether to disable or enable
+     * @param {string} loadingText - Text to show while loading (optional)
+     */
+    function setSubmitButtonState($submitBtn, disabled, loadingText = null) {
+        if (!$submitBtn) return;
+
+        $submitBtn.disabled = disabled;
+
+        if (disabled) {
+            // Store original text and show loading state
+            if (!$submitBtn.dataset.originalText) {
+                $submitBtn.dataset.originalText = $submitBtn.textContent || $submitBtn.value;
+            }
+            const text = loadingText || "Loading AutoProctor...";
+            if ($submitBtn.tagName === "INPUT") {
+                $submitBtn.value = text;
+            } else {
+                $submitBtn.textContent = text;
+            }
+            $submitBtn.style.opacity = "0.7";
+            $submitBtn.style.cursor = "not-allowed";
+        } else {
+            // Restore original text
+            const originalText = $submitBtn.dataset.originalText;
+            if (originalText) {
+                if ($submitBtn.tagName === "INPUT") {
+                    $submitBtn.value = originalText;
+                } else {
+                    $submitBtn.textContent = originalText;
+                }
+            }
+            $submitBtn.style.opacity = "";
+            $submitBtn.style.cursor = "";
+        }
+    }
+
+    /**
+     * Finds and disables all quiz start/attempt/preview buttons on the page.
+     * This includes both the main page buttons and preflight form submit.
+     * @returns {HTMLElement[]} Array of disabled button elements
+     */
+    function disableQuizStartButtons() {
+        const buttons = [];
+
+        // Find submit button in preflight form (if form is open)
+        const preflightSubmit = document.querySelector(`#${MOODLE_PREFLIGHT_FORM_ID} input[type="submit"]`);
+        if (preflightSubmit) {
+            setSubmitButtonState(preflightSubmit, true);
+            buttons.push(preflightSubmit);
+        }
+
+        // Find main page quiz buttons (Preview quiz, Attempt quiz, Re-attempt quiz, Continue)
+        // These are typically in a form with action pointing to startattempt.php
+        const startAttemptForms = document.querySelectorAll('form[action*="startattempt.php"]');
+        startAttemptForms.forEach(form => {
+            const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+            if (submitBtn) {
+                setSubmitButtonState(submitBtn, true);
+                buttons.push(submitBtn);
+            }
+        });
+
+        // Also look for direct links/buttons that might start attempts
+        const quizButtons = document.querySelectorAll('.quizattempt button, .quizstartbuttondiv button');
+        quizButtons.forEach(btn => {
+            setSubmitButtonState(btn, true);
+            buttons.push(btn);
+        });
+
+        return buttons;
+    }
+
+    /**
+     * Re-enables all previously disabled quiz start buttons.
+     * @param {HTMLElement[]} buttons - Array of button elements to enable
+     */
+    function enableQuizStartButtons(buttons) {
+        buttons.forEach(btn => setSubmitButtonState(btn, false));
+    }
+
+    // Track disabled buttons across retries
+    let _disabledButtons = [];
+
+    async function initAutoProctor(clientId, hashedTestAttemptId, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv) {
         // Don't initialize if we're inside an iframe (prevents double initialization on redirect pages)
         if (window !== window.top) {
             return;
         }
 
+        // Immediately try to disable all quiz start buttons to prevent bypass
+        // This runs on every retry to catch when buttons become available
+        const newButtons = disableQuizStartButtons();
+        // Add any newly found buttons to our tracking array
+        newButtons.forEach(btn => {
+            if (!_disabledButtons.includes(btn)) {
+                _disabledButtons.push(btn);
+            }
+        });
+
         // Check if AutoProctor is already loaded and retry if not
-        if (typeof window.AutoProctor === "undefined") {
+        // Also verify it's actually a constructor (not just an object from failed AMD load)
+        if (typeof window.AutoProctor === "undefined" || typeof window.AutoProctor !== "function") {
+            _sdkRetryCount++;
+
+            if (_sdkRetryCount > CONFIG.SDK_MAX_RETRIES) {
+                console.error(`[AP] AutoProctor SDK failed to load after ${CONFIG.SDK_MAX_RETRIES} attempts`);
+                // Show error to user and keep buttons disabled
+                const errorDiv = document.createElement("div");
+                errorDiv.className = "alert alert-danger";
+                errorDiv.style.cssText = "margin: 20px; padding: 15px;";
+                errorDiv.innerHTML = `
+                    <strong>AutoProctor Error:</strong> Failed to load AutoProctor SDK.
+                    Please check your internet connection and <a href="javascript:location.reload()">refresh the page</a>.
+                `;
+                document.body.prepend(errorDiv);
+
+                // Update all buttons to show error state (keep disabled)
+                _disabledButtons.forEach(btn => {
+                    setSubmitButtonState(btn, true, "AutoProctor Failed - Refresh Page");
+                });
+                return;
+            }
+
+            console.log(`[AP] Waiting for AutoProctor SDK (attempt ${_sdkRetryCount}/${CONFIG.SDK_MAX_RETRIES})...`);
             setTimeout(
-                () => initAutoProctor(clientId, clientSecret, testAttemptId, trackingOptions, cmid, lookupKey),
-                1000
+                () => initAutoProctor(clientId, hashedTestAttemptId, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv),
+                CONFIG.SDK_RETRY_DELAY_MS
             );
             return;
         }
@@ -496,13 +672,19 @@ define(["jquery", "core/templates"], function ($, Templates) {
         _trackingOptions = trackingOptions ?? {};
         _testAttemptId = testAttemptId ?? "";
         _lookupKey = lookupKey ?? "";
+        _apDomain = apDomain ?? "https://autoproctor.co";
+        _apEnv = apEnv ?? "production";
 
         // Initialize AutoProctor instance
-        const credentials = getCredentials(clientId, clientSecret, testAttemptId);
+        const credentials = getCredentials(clientId, hashedTestAttemptId, testAttemptId, _apDomain, _apEnv);
         _apInstance = new window.AutoProctor(credentials);
 
         addIframe();
         addPageLoader();
+
+        // AutoProctor is ready - re-enable all previously disabled buttons
+        enableQuizStartButtons(_disabledButtons);
+        _disabledButtons = [];
 
         waitForElement(`#${MOODLE_PREFLIGHT_FORM_ID}`, ($targetElement) => {
             addSubmitPreflightEvent($targetElement);
@@ -520,21 +702,42 @@ define(["jquery", "core/templates"], function ($, Templates) {
     /**
      * Loads the report for the given test attempt ID.
      * @param {string} clientId
-     * @param {string} clientSecret
+     * @param {string} hashedTestAttemptId - Pre-computed HMAC-SHA256 hash (base64 encoded)
      * @param {string} testAttemptId
-     * @param {boolean} includeSessionRecording - Whether to include session recording in the report
+     * @param {string} apDomain - The AutoProctor API domain
+     * @param {string} apEnv - The environment (development/production)
      * @returns {void}
      */
-    function loadReport(clientId, clientSecret, testAttemptId, includeSessionRecording = true) {
+    // Track SDK loading retries for loadReport
+    let _reportSdkRetryCount = 0;
+
+    function loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv) {
         // Check if AutoProctor is already loaded and retry if not
-        if (typeof window.AutoProctor === "undefined") {
-            setTimeout(() => loadReport(clientId, clientSecret, testAttemptId, includeSessionRecording), 1000);
+        if (typeof window.AutoProctor === "undefined" || typeof window.AutoProctor !== "function") {
+            _reportSdkRetryCount++;
+
+            if (_reportSdkRetryCount > CONFIG.SDK_MAX_RETRIES) {
+                console.error(`[AP] AutoProctor SDK failed to load for report after ${CONFIG.SDK_MAX_RETRIES} attempts`);
+                const loaderEl = document.getElementById("ap-report-loader");
+                if (loaderEl) {
+                    loaderEl.innerHTML = `
+                        <div class="alert alert-danger">
+                            Failed to load AutoProctor SDK.
+                            <a href="javascript:location.reload()">Refresh page</a> to try again.
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            console.log(`[AP] Waiting for AutoProctor SDK for report (attempt ${_reportSdkRetryCount}/${CONFIG.SDK_MAX_RETRIES})...`);
+            setTimeout(() => loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv), CONFIG.SDK_RETRY_DELAY_MS);
             return;
         }
 
-        const credentials = getCredentials(clientId, clientSecret, testAttemptId);
+        const credentials = getCredentials(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv);
         const apInstance = new window.AutoProctor(credentials);
-        apInstance.showReport(getReportOptions(includeSessionRecording));
+        apInstance.showReport(getReportOptions());
     }
 
     /**
@@ -586,11 +789,13 @@ define(["jquery", "core/templates"], function ($, Templates) {
      * @param {string} reportUrl - The URL to the report (fallback external link)
      * @param {string} buttonLabel - The label for the button (unused, kept for compatibility)
      * @param {string} clientId - The AutoProctor client ID
-     * @param {string} clientSecret - The AutoProctor client secret
+     * @param {string} hashedTestAttemptId - Pre-computed HMAC-SHA256 hash (base64 encoded)
      * @param {string} testAttemptId - The test attempt ID for this session
      * @param {object} trackingOptions - The tracking options used for this session (to determine which tabs to show)
+     * @param {string} apDomain - The AutoProctor API domain
+     * @param {string} apEnv - The environment (development/production)
      */
-    function addReportButton(reportUrl, buttonLabel, clientId, clientSecret, testAttemptId, trackingOptions) {
+    function addReportButton(reportUrl, buttonLabel, clientId, hashedTestAttemptId, testAttemptId, trackingOptions, apDomain, apEnv) {
         // Determine if session recording was enabled for this attempt
         const showSessionRecording = trackingOptions?.recordSession !== false;
         // Track if report has been loaded
@@ -625,7 +830,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
                     // Load proctoring report when switching to proctoring tab (lazy load)
                     if (tabId === "proctoring-summary-tab" && !reportLoaded) {
                         reportLoaded = true;
-                        loadReport(clientId, clientSecret, testAttemptId, showSessionRecording);
+                        loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv);
 
                         // Hide loader and show content after a delay
                         setTimeout(() => {

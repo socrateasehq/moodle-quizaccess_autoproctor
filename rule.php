@@ -38,9 +38,20 @@ if (class_exists('\mod_quiz\local\access_rule_base')) {
 
 class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
 {
+    // Environment URLs
+    private const AP_CDN_PRODUCTION = 'https://cdn.autoproctor.co/ap-entry-moodle.js';
+    private const AP_CDN_DEVELOPMENT = 'https://ap-development.s3.ap-south-1.amazonaws.com/ap-entry-moodle.js';
+    private const AP_DOMAIN_PRODUCTION = 'https://www.autoproctor.co';
+    private const AP_DOMAIN_DEVELOPMENT = 'https://dev.autoproctor.co';
+    // CryptoJS is required by the AutoProctor SDK (not for our hashing - that's done server-side)
+    private const CRYPTOJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js';
+
     /** @var quizaccess_autoproctor_quiz_settings_class_alias */
     protected $quizobj;
+
+    /** @var string */
     protected $testAttemptId;
+
     public function __construct($quizobj, $timenow)
     {
         parent::__construct($quizobj, $timenow);
@@ -84,24 +95,56 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             )
         );
 
-        // Add nested tracking options
+        // Add nested tracking options (boolean options)
         $tracking_options = [
             'activity' => [
                 'audio' => get_string('tracking_audio', 'quizaccess_autoproctor'),
                 'numHumans' => get_string('tracking_numHumans', 'quizaccess_autoproctor'),
                 'tabSwitch' => get_string('tracking_tabSwitch', 'quizaccess_autoproctor'),
+                'disableCopyPaste' => get_string('tracking_disableCopyPaste', 'quizaccess_autoproctor'),
+                'multiSessionAttempt' => get_string('tracking_multiSessionAttempt', 'quizaccess_autoproctor'),
             ],
             'camera' => [
                 'testTakerPhoto' => get_string('tracking_testTakerPhoto', 'quizaccess_autoproctor'),
                 'photosAtRandom' => get_string('tracking_photosAtRandom', 'quizaccess_autoproctor'),
-                'showCamPreview' => get_string('tracking_showCamPreview', 'quizaccess_autoproctor'),
+                'impersonation' => get_string('tracking_impersonation', 'quizaccess_autoproctor'),
             ],
             'screen' => [
                 'captureSwitchedTab' => get_string('tracking_captureSwitchedTab', 'quizaccess_autoproctor'),
                 'recordSession' => get_string('tracking_recordSession', 'quizaccess_autoproctor'),
                 'detectMultipleScreens' => get_string('tracking_detectMultipleScreens', 'quizaccess_autoproctor'),
                 'forceFullScreen' => get_string('tracking_forceFullScreen', 'quizaccess_autoproctor'),
-            ]
+                'forceDesktop' => get_string('tracking_forceDesktop', 'quizaccess_autoproctor'),
+            ],
+            // 'security' => [
+            //     'auxiliaryDevice' => get_string('tracking_auxiliaryDevice', 'quizaccess_autoproctor'), // TODO: Enable when ready
+            // ],
+            'idcard' => [
+                'idCardVerification_face' => get_string('tracking_idCardVerification_face', 'quizaccess_autoproctor'),
+                'idCardVerification_name' => get_string('tracking_idCardVerification_name', 'quizaccess_autoproctor'),
+                'idCardVerification_expiryDate' => get_string('tracking_idCardVerification_expiryDate', 'quizaccess_autoproctor'),
+            ],
+        ];
+
+        // Default values for options (false = off by default, true = on by default)
+        $option_defaults = [
+            'audio' => 1,
+            'numHumans' => 1,
+            'tabSwitch' => 1,
+            'disableCopyPaste' => 0,
+            'multiSessionAttempt' => 0,
+            'testTakerPhoto' => 0,
+            'photosAtRandom' => 1,
+            'impersonation' => 0,
+            'captureSwitchedTab' => 1,
+            'recordSession' => 0,
+            'detectMultipleScreens' => 1,
+            'forceFullScreen' => 0,
+            'forceDesktop' => 0,
+            // 'auxiliaryDevice' => 0, // TODO: Enable when ready
+            'idCardVerification_face' => 0,
+            'idCardVerification_name' => 0,
+            'idCardVerification_expiryDate' => 0,
         ];
 
         foreach ($tracking_options as $group => $options) {
@@ -121,7 +164,17 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
                     $string
                 );
                 $mform->addHelpButton($element_name, "tracking_{$option}", 'quizaccess_autoproctor');
-                $mform->setDefault($element_name, $ap_settings->tracking_options[$option] ?? 1);
+
+                // Handle idCardVerification options specially (nested structure)
+                if (strpos($option, 'idCardVerification_') === 0) {
+                    $subkey = str_replace('idCardVerification_', '', $option);
+                    $stored_value = $ap_settings->tracking_options['idCardVerification'][$subkey] ?? null;
+                    $default_value = $stored_value !== null ? (int) $stored_value : ($option_defaults[$option] ?? 0);
+                } else {
+                    $default_value = $ap_settings->tracking_options[$option] ?? $option_defaults[$option] ?? 0;
+                }
+
+                $mform->setDefault($element_name, $default_value);
                 $mform->disabledIf($element_name, 'requireautoproctor', 'eq', 0);
                 $mform->setType($element_name, PARAM_INT);
             }
@@ -143,28 +196,61 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
 
         // Prepare tracking options
         $tracking_options = new stdClass();
-        $options = [
-            'audio',
-            'numHumans',
-            'tabSwitch',
-            'captureSwitchedTab',
-            'photosAtRandom',
-            'recordSession',
-            'detectMultipleScreens',
-            'testTakerPhoto',
-            'showCamPreview',
-            'forceFullScreen'
+
+        // Boolean options with their default values
+        $boolean_options = [
+            'audio' => true,
+            'numHumans' => true,
+            'tabSwitch' => true,
+            'disableCopyPaste' => false,
+            'captureSwitchedTab' => true,
+            'photosAtRandom' => true,
+            'recordSession' => false,
+            'detectMultipleScreens' => true,
+            'testTakerPhoto' => false,
+            'forceFullScreen' => false,
+            'forceDesktop' => false,
+            'multiSessionAttempt' => false,
+            // 'auxiliaryDevice' => false, // TODO: Enable when ready
+            'impersonation' => false,
         ];
-        foreach ($options as $option) {
+
+        foreach ($boolean_options as $option => $default) {
             $form_field = "tracking_{$option}";
             // If proctoring is enabled, use form values, otherwise keep existing values
             if ($record->proctoring_enabled) {
-                $tracking_options->$option = isset($quiz->$form_field) ? (bool) $quiz->$form_field : true;
+                $tracking_options->$option = isset($quiz->$form_field) ? (bool) $quiz->$form_field : $default;
             } else {
-                $tracking_options->$option = $existing_options[$option] ?? true;
+                $tracking_options->$option = $existing_options[$option] ?? $default;
             }
             unset($quiz->$form_field);
         }
+
+        // Handle idCardVerification as an object (or null if all disabled)
+        $idcard_options = ['face', 'name', 'expiryDate'];
+        $idcard_config = new stdClass();
+        $idcard_enabled = false;
+
+        foreach ($idcard_options as $idopt) {
+            $form_field = "tracking_idCardVerification_{$idopt}";
+            if ($record->proctoring_enabled) {
+                $value = isset($quiz->$form_field) ? (bool) $quiz->$form_field : false;
+            } else {
+                $value = $existing_options['idCardVerification'][$idopt] ?? false;
+            }
+            $idcard_config->$idopt = $value;
+            if ($value) {
+                $idcard_enabled = true;
+            }
+            unset($quiz->$form_field);
+        }
+
+        // Only set idCardVerification if at least one option is enabled
+        // If all disabled, omit the key entirely from JSON
+        if ($idcard_enabled) {
+            $tracking_options->idCardVerification = $idcard_config;
+        }
+
         $record->tracking_options = json_encode($tracking_options);
 
         // Insert or update the record
@@ -192,7 +278,6 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     public function description()
     {
         $messages = [get_string('autoproctor_desc_headsup', 'quizaccess_autoproctor')];
-
         $messages[] = $this->get_download_config_button();
 
         return $messages;
@@ -249,11 +334,8 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         global $PAGE, $DB, $USER;
 
         // Get client credentials
-        $clientId = get_config('quizaccess_autoproctor', 'client_id');
-        $clientSecret = get_config('quizaccess_autoproctor', 'client_secret');
-
-        // Check if client credentials are set
-        if (empty($clientId) || empty($clientSecret)) {
+        $creds = self::get_credentials();
+        if (empty($creds['clientId']) || empty($creds['clientSecret'])) {
             \core\notification::error(get_string('credentials_not_set', 'quizaccess_autoproctor'));
             return;
         }
@@ -271,26 +353,30 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         if ($session) {
             // If session exists, use that test attempt ID
             $testAttemptId = $session->test_attempt_id;
-        } else {
-            // Session cannot be created in db as we don't have an attempt ID yet.
-            // This will be created in setup_attempt_page() when the attempt ID is generated.
         }
 
-        // Include the scripts and styles
-        $PAGE->requires->js(new moodle_url('https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js'), true);
-        $PAGE->requires->js(new moodle_url('https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.js'), true);
-        $PAGE->requires->css(new moodle_url('https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.css'));
+        // Get environment configuration
+        $envConfig = self::get_environment_config();
+
+        // Include CryptoJS (required by AutoProctor SDK) and the SDK itself
+        $PAGE->requires->js(new moodle_url(self::CRYPTOJS_URL), true);
+        $PAGE->requires->js(new moodle_url($envConfig['apEntryUrl']), true);
 
         $this->testAttemptId = $testAttemptId;
 
+        // Compute hash server-side to avoid exposing client secret to browser
+        $hashedTestAttemptId = self::hash_test_attempt_id($testAttemptId, $creds['clientSecret']);
+
         // Include necessary scripts/styles for AutoProctor during preflight check
         $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'init', [
-            'clientId' => $clientId,
-            'clientSecret' => $clientSecret,
+            'clientId' => $creds['clientId'],
+            'hashedTestAttemptId' => $hashedTestAttemptId,
             'testAttemptId' => $testAttemptId,
             'trackingOptions' => $tracking_options,
             'cmid' => $this->quizobj->get_quiz()->cmid,
-            'lookupKey' => $this->get_lookup_key()
+            'lookupKey' => $this->get_lookup_key(),
+            'apDomain' => $envConfig['apDomain'],
+            'apEnv' => $envConfig['apEnv']
         ]);
     }
 
@@ -309,7 +395,6 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             return $errors;
         }
 
-        echo "<script>console.log(' [ap] attempt id: " . $attemptid . "');</script>";
         if (empty($data['autoproctor_consent'])) {
             $errors['autoproctor_consent'] = get_string('mustacceptproctoring', 'quizaccess_autoproctor');
         }
@@ -361,6 +446,57 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     }
 
     /**
+     * Get environment configuration based on hostname.
+     * Returns URLs and settings for development vs production environment.
+     *
+     * @return array [
+     *     'isLocalhost' => bool,
+     *     'apDomain' => string,
+     *     'apEnv' => string,
+     *     'apEntryUrl' => string
+     * ]
+     */
+    private static function get_environment_config(): array
+    {
+        $isLocalhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'])
+            || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost:') === 0;
+
+        return [
+            'isLocalhost' => $isLocalhost,
+            'apDomain' => $isLocalhost ? self::AP_DOMAIN_DEVELOPMENT : self::AP_DOMAIN_PRODUCTION,
+            'apEnv' => $isLocalhost ? 'development' : 'production',
+            'apEntryUrl' => $isLocalhost ? self::AP_CDN_DEVELOPMENT : self::AP_CDN_PRODUCTION
+        ];
+    }
+
+    /**
+     * Get AutoProctor API credentials from plugin settings.
+     *
+     * @return array ['clientId' => string, 'clientSecret' => string]
+     */
+    private static function get_credentials(): array
+    {
+        return [
+            'clientId' => get_config('quizaccess_autoproctor', 'client_id'),
+            'clientSecret' => get_config('quizaccess_autoproctor', 'client_secret')
+        ];
+    }
+
+    /**
+     * Generate HMAC-SHA256 hash of test attempt ID for SDK authentication.
+     * This is computed server-side to avoid exposing the client secret to the browser.
+     *
+     * @param string $testAttemptId The test attempt ID to hash
+     * @param string $clientSecret The client secret key
+     * @return string Base64-encoded HMAC-SHA256 hash
+     */
+    private static function hash_test_attempt_id(string $testAttemptId, string $clientSecret): string
+    {
+        $hash = hash_hmac('sha256', $testAttemptId, $clientSecret, true);
+        return base64_encode($hash);
+    }
+
+    /**
      * Sets up the attempt (review or summary) page with any special extra
      * properties required by this rule.
      *
@@ -394,34 +530,39 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         }
 
         // Get credentials
-        $clientId = get_config('quizaccess_autoproctor', 'client_id');
-        $clientSecret = get_config('quizaccess_autoproctor', 'client_secret');
-
-        if (empty($clientId) || empty($clientSecret)) {
+        $creds = self::get_credentials();
+        if (empty($creds['clientId']) || empty($creds['clientSecret'])) {
             return;
         }
+
+        // Get environment configuration
+        $envConfig = self::get_environment_config();
 
         // Build the report URL
         $reportBaseUrl = get_string('viewattemptreportlink', 'quizaccess_autoproctor');
         $reportUrl = $reportBaseUrl . $session->test_attempt_id . '/';
         $buttonLabel = get_string('viewattemptreport', 'quizaccess_autoproctor');
 
-        // Include the AutoProctor SDK for report viewing
-        $page->requires->js(new moodle_url('https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js'), true);
-        $page->requires->js(new moodle_url('https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.js'), true);
-        $page->requires->css(new moodle_url('https://ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.css'));
+        // Include CryptoJS (required by AutoProctor SDK) and the SDK itself
+        $page->requires->js(new moodle_url(self::CRYPTOJS_URL), true);
+        $page->requires->js(new moodle_url($envConfig['apEntryUrl']), true);
 
         // Get tracking options from session to determine which tabs to show
         $tracking_options = json_decode($session->tracking_options, true) ?? [];
+
+        // Compute hash server-side to avoid exposing client secret to browser
+        $hashedTestAttemptId = self::hash_test_attempt_id($session->test_attempt_id, $creds['clientSecret']);
 
         // Call JS to add the report button
         $page->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'addReportButton', [
             'reportUrl' => $reportUrl,
             'buttonLabel' => $buttonLabel,
-            'clientId' => $clientId,
-            'clientSecret' => $clientSecret,
+            'clientId' => $creds['clientId'],
+            'hashedTestAttemptId' => $hashedTestAttemptId,
             'testAttemptId' => $session->test_attempt_id,
-            'trackingOptions' => $tracking_options
+            'trackingOptions' => $tracking_options,
+            'apDomain' => $envConfig['apDomain'],
+            'apEnv' => $envConfig['apEnv']
         ]);
     }
 

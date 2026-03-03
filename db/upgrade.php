@@ -223,5 +223,17 @@ function xmldb_quizaccess_autoproctor_upgrade($oldversion)
         upgrade_plugin_savepoint(true, 2025022502, 'quizaccess', 'autoproctor');
     }
 
+    if ($oldversion < 2025022801) {
+        // Add unique index on quiz_attempt_id to prevent duplicate sessions
+        $table = new xmldb_table('quizaccess_autoproctor_sessions');
+        $index = new xmldb_index('quiz_attempt_id_unique', XMLDB_INDEX_UNIQUE, ['quiz_attempt_id']);
+
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2025022801, 'quizaccess', 'autoproctor');
+    }
+
     return true;
 }

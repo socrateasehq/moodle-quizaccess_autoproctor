@@ -19,6 +19,9 @@
                 <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
                 <KEY NAME="quiz_attempt_id" TYPE="foreign" FIELDS="quiz_attempt_id" REFTABLE="quiz_attempts" REFFIELDS="id"/>
             </KEYS>
+            <INDEXES>
+                <INDEX NAME="quiz_attempt_id_unique" UNIQUE="true" FIELDS="quiz_attempt_id"/>
+            </INDEXES>
         </TABLE>
         <TABLE NAME="quizaccess_autoproctor" COMMENT="Stores quiz proctoring settings">
             <FIELDS>

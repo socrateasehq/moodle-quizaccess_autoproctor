@@ -1,0 +1,36 @@
+/**
+ * AutoProctor plugin styles
+ *
+ * @package    quizaccess_autoproctor
+ * @copyright  2024 AutoProctor
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+/* Hide inline preflight form - it will be shown in modal by Moodle */
+/* This prevents the "jumpy" UX where form appears inline then disappears */
+#mod_quiz_preflight_form:not(.moodle-dialogue-bd #mod_quiz_preflight_form) {
+    display: none !important;
+}
+
+/* Widen label column for AutoProctor settings to prevent label wrapping */
+#id_autoproctorsettings .col-form-label,
+#id_autoproctorsettings .col-md-3 {
+    flex: 0 0 50%;
+    max-width: 50%;
+}
+
+#id_autoproctorsettings .col-md-9 {
+    flex: 0 0 50%;
+    max-width: 50%;
+}
+
+/* Make section headers (Camera Settings, Screen Tracking, etc.) span full width and align left */
+#id_autoproctorsettings .femptylabel .col-md-3 {
+    display: none !important;
+}
+
+#id_autoproctorsettings .femptylabel .col-md-9 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+}
