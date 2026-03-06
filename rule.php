@@ -43,8 +43,6 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     private const AP_CDN_DEVELOPMENT = 'https://ap-development.s3.ap-south-1.amazonaws.com/ap-entry-moodle.js';
     private const AP_DOMAIN_PRODUCTION = 'https://www.autoproctor.co';
     private const AP_DOMAIN_DEVELOPMENT = 'https://dev.autoproctor.co';
-    // CryptoJS is required by the AutoProctor SDK (not for our hashing - that's done server-side)
-    private const CRYPTOJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js';
 
     /** @var quizaccess_autoproctor_quiz_settings_class_alias */
     protected $quizobj;
@@ -116,9 +114,6 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
                 'forceFullScreen' => get_string('tracking_forceFullScreen', 'quizaccess_autoproctor'),
                 'forceDesktop' => get_string('tracking_forceDesktop', 'quizaccess_autoproctor'),
             ],
-            // 'security' => [
-            //     'auxiliaryDevice' => get_string('tracking_auxiliaryDevice', 'quizaccess_autoproctor'), // TODO: Enable when ready
-            // ],
             'idcard' => [
                 'idCardVerification_face' => get_string('tracking_idCardVerification_face', 'quizaccess_autoproctor'),
                 'idCardVerification_name' => get_string('tracking_idCardVerification_name', 'quizaccess_autoproctor'),
@@ -141,7 +136,6 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             'detectMultipleScreens' => 1,
             'forceFullScreen' => 0,
             'forceDesktop' => 0,
-            // 'auxiliaryDevice' => 0, // TODO: Enable when ready
             'idCardVerification_face' => 0,
             'idCardVerification_name' => 0,
             'idCardVerification_expiryDate' => 0,
@@ -211,7 +205,6 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             'forceFullScreen' => false,
             'forceDesktop' => false,
             'multiSessionAttempt' => false,
-            // 'auxiliaryDevice' => false, // TODO: Enable when ready
             'impersonation' => false,
         ];
 
@@ -350,6 +343,12 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         $testAttemptId = optional_param('test-attempt-id', uniqid('ap_'), PARAM_RAW);
         $tracking_options = self::get_ap_settings($this->quizobj->get_quiz()->id)->tracking_options;
 
+        // Build user details to pass to AutoProctor
+        $userdetails = [
+            'name' => fullname($USER),
+            'email' => $USER->email ?? '',
+        ];
+
         if ($session) {
             // If session exists, use that test attempt ID
             $testAttemptId = $session->test_attempt_id;
@@ -358,8 +357,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         // Get environment configuration
         $envConfig = self::get_environment_config();
 
-        // Include CryptoJS (required by AutoProctor SDK) and the SDK itself
-        $PAGE->requires->js(new moodle_url(self::CRYPTOJS_URL), true);
+        // Include AutoProctor SDK
         $PAGE->requires->js(new moodle_url($envConfig['apEntryUrl']), true);
 
         $this->testAttemptId = $testAttemptId;
@@ -376,7 +374,8 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             'cmid' => $this->quizobj->get_quiz()->cmid,
             'lookupKey' => $this->get_lookup_key(),
             'apDomain' => $envConfig['apDomain'],
-            'apEnv' => $envConfig['apEnv']
+            'apEnv' => $envConfig['apEnv'],
+            'userDetails' => $userdetails,
         ]);
     }
 
@@ -543,8 +542,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         $reportUrl = $reportBaseUrl . $session->test_attempt_id . '/';
         $buttonLabel = get_string('viewattemptreport', 'quizaccess_autoproctor');
 
-        // Include CryptoJS (required by AutoProctor SDK) and the SDK itself
-        $page->requires->js(new moodle_url(self::CRYPTOJS_URL), true);
+        // Include AutoProctor SDK
         $page->requires->js(new moodle_url($envConfig['apEntryUrl']), true);
 
         // Get tracking options from session to determine which tabs to show
@@ -562,7 +560,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             'testAttemptId' => $session->test_attempt_id,
             'trackingOptions' => $tracking_options,
             'apDomain' => $envConfig['apDomain'],
-            'apEnv' => $envConfig['apEnv']
+            'apEnv' => $envConfig['apEnv'],
         ]);
     }
 

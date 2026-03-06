@@ -82,3 +82,20 @@ $string['tracking_impersonation_help'] = 'Compare random photos with the initial
 $string['tracking_idCardVerification_face_help'] = 'Compare the face on the ID card with the candidate\'s selfie. Automatically enables test taker photo.';
 $string['tracking_idCardVerification_name_help'] = 'Extract and compare the name on the ID card with the candidate\'s registered name.';
 $string['tracking_idCardVerification_expiryDate_help'] = 'Check whether the ID card has expired.';
+
+// Privacy API strings
+$string['privacy:metadata:quizaccess_autoproctor_sessions'] = 'Stores proctoring session data for quiz attempts.';
+$string['privacy:metadata:quizaccess_autoproctor_sessions:quiz_id'] = 'The ID of the quiz being proctored.';
+$string['privacy:metadata:quizaccess_autoproctor_sessions:quiz_attempt_id'] = 'The ID of the quiz attempt being proctored.';
+$string['privacy:metadata:quizaccess_autoproctor_sessions:test_attempt_id'] = 'The unique AutoProctor test attempt identifier.';
+$string['privacy:metadata:quizaccess_autoproctor_sessions:tracking_options'] = 'JSON configuration of which proctoring features were enabled for this attempt.';
+$string['privacy:metadata:quizaccess_autoproctor_sessions:started_at'] = 'The timestamp when the proctoring session started.';
+$string['privacy:metadata:quizaccess_autoproctor_sessions:timecreated'] = 'The timestamp when the session record was created.';
+$string['privacy:metadata:quizaccess_autoproctor_sessions:timemodified'] = 'The timestamp when the session record was last modified.';
+$string['privacy:metadata:autoproctor_external'] = 'Proctoring data is sent to and stored on external AutoProctor servers for analysis.';
+$string['privacy:metadata:autoproctor_external:webcam_photos'] = 'Photos captured from the user\'s webcam during the quiz attempt.';
+$string['privacy:metadata:autoproctor_external:audio_recordings'] = 'Audio captured from the user\'s microphone during the quiz attempt.';
+$string['privacy:metadata:autoproctor_external:screen_recordings'] = 'Screen recordings captured during the quiz attempt.';
+$string['privacy:metadata:autoproctor_external:test_attempt_id'] = 'The unique identifier linking this data to the quiz attempt.';
+$string['privacy:metadata:autoproctor_external:tracking_options'] = 'Configuration of which proctoring features were active.';
+$string['privacy:externaldatanote'] = 'Additional proctoring data (webcam photos, audio, screen recordings) is stored on external AutoProctor servers and must be requested directly from AutoProctor.';

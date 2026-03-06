@@ -25,6 +25,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
     let _lookupKey;
     let _apDomain;
     let _apEnv;
+    let _userDetails;
 
     // Flags
     let isPreflightFormSubmitted = false;
@@ -58,10 +59,11 @@ define(["jquery", "core/templates"], function ($, Templates) {
     /**
      * Generates the report options object required by AutoProctor.
      * @param {boolean} includeSessionRecording - Whether to include session recording in the report
+     * @param {{name: string, email: string}} [userDetails] - Optional user details for the report
      * @returns {object}
      */
-    const getReportOptions = (includeSessionRecording = true) => {
-        return {
+    const getReportOptions = (includeSessionRecording = true, userDetails = null) => {
+        const options = {
             showProctoringOverview: true,
             showProctoringSummary: true,
             showSessionRecording: includeSessionRecording,
@@ -70,11 +72,14 @@ define(["jquery", "core/templates"], function ($, Templates) {
             sessionRecordingDOMId: "ap-report__session",
             groupReportsIntoTabs: false,
             showDownloadReportBtn: true,
-            userDetails: {
-                name: "First Last",
-                email: "user@gmail.com",
-            },
         };
+
+        const resolvedUserDetails = userDetails || _userDetails;
+        if (resolvedUserDetails) {
+            options.userDetails = resolvedUserDetails;
+        }
+
+        return options;
     };
 
     /**
@@ -99,6 +104,9 @@ define(["jquery", "core/templates"], function ($, Templates) {
             testContainerId: MOODLE_PAGE_CONTENT_ID,
             alertBeforeUnload: false,
         };
+        if (_userDetails) {
+            proctoringOptions.userDetails = _userDetails;
+        }
         return proctoringOptions;
     };
 
@@ -620,7 +628,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
     // Track disabled buttons across retries
     let _disabledButtons = [];
 
-    async function initAutoProctor(clientId, hashedTestAttemptId, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv) {
+    async function initAutoProctor(clientId, hashedTestAttemptId, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv, userDetails) {
         // Don't initialize if we're inside an iframe (prevents double initialization on redirect pages)
         if (window !== window.top) {
             return;
@@ -674,6 +682,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
         _lookupKey = lookupKey ?? "";
         _apDomain = apDomain ?? "https://autoproctor.co";
         _apEnv = apEnv ?? "production";
+        _userDetails = userDetails ?? null;
 
         // Initialize AutoProctor instance
         const credentials = getCredentials(clientId, hashedTestAttemptId, testAttemptId, _apDomain, _apEnv);
@@ -706,12 +715,13 @@ define(["jquery", "core/templates"], function ($, Templates) {
      * @param {string} testAttemptId
      * @param {string} apDomain - The AutoProctor API domain
      * @param {string} apEnv - The environment (development/production)
+     * @param {{name: string, email: string}} [userDetails] - Optional user details for the report
      * @returns {void}
      */
     // Track SDK loading retries for loadReport
     let _reportSdkRetryCount = 0;
 
-    function loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv) {
+    function loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv, userDetails) {
         // Check if AutoProctor is already loaded and retry if not
         if (typeof window.AutoProctor === "undefined" || typeof window.AutoProctor !== "function") {
             _reportSdkRetryCount++;
@@ -737,7 +747,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
 
         const credentials = getCredentials(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv);
         const apInstance = new window.AutoProctor(credentials);
-        apInstance.showReport(getReportOptions());
+        apInstance.showReport(getReportOptions(true, userDetails));
     }
 
     /**
@@ -794,8 +804,9 @@ define(["jquery", "core/templates"], function ($, Templates) {
      * @param {object} trackingOptions - The tracking options used for this session (to determine which tabs to show)
      * @param {string} apDomain - The AutoProctor API domain
      * @param {string} apEnv - The environment (development/production)
+     * @param {{name: string, email: string}} [userDetails] - Optional user details to be passed to AutoProctor
      */
-    function addReportButton(reportUrl, buttonLabel, clientId, hashedTestAttemptId, testAttemptId, trackingOptions, apDomain, apEnv) {
+    function addReportButton(reportUrl, buttonLabel, clientId, hashedTestAttemptId, testAttemptId, trackingOptions, apDomain, apEnv, userDetails) {
         // Determine if session recording was enabled for this attempt
         const showSessionRecording = trackingOptions?.recordSession !== false;
         // Track if report has been loaded
@@ -830,7 +841,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
                     // Load proctoring report when switching to proctoring tab (lazy load)
                     if (tabId === "proctoring-summary-tab" && !reportLoaded) {
                         reportLoaded = true;
-                        loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv);
+                        loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv, userDetails);
 
                         // Hide loader and show content after a delay
                         setTimeout(() => {

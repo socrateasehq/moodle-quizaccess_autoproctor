@@ -55,8 +55,7 @@ $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'loadReport', 
 
 echo $OUTPUT->header();
 
-// Load CryptoJS (required by AutoProctor SDK) and the SDK itself
-echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>';
+// Load AutoProctor SDK
 echo '<script src="' . $apEntryUrl . '"></script>';
 echo $OUTPUT->render_from_template('quizaccess_autoproctor/autoproctor', []);
 echo $OUTPUT->footer();

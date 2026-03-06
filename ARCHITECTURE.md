@@ -106,8 +106,7 @@ autoproctor/
 
 ## External Dependencies
 
-- **AutoProctor SDK**: `ap-development.s3.amazonaws.com/autoproctor.4.3.0.min.js`
-- **CryptoJS**: `cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js`
+- **AutoProctor SDK**: Loaded from `cdn.autoproctor.co` (production) or `ap-development.s3.ap-south-1.amazonaws.com` (development)
 
 ## Moodle Compatibility
 
