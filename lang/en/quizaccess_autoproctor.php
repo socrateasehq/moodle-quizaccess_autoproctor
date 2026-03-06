@@ -28,10 +28,11 @@ defined('MOODLE_INTERNAL') || die();
 $string['pluginname'] = 'AutoProctor Integration';
 
 // Client credentials
+$string['credentials_info'] = 'Don\'t have credentials yet? <a href="https://www.autoproctor.co/developers/register/" target="_blank">Get your Client ID and Secret here</a>.';
 $string['client_id'] = 'AutoProctor Client ID';
-$string['client_id_desc'] = 'Enter your AutoProctor Client ID from the dashboard';
+$string['client_id_desc'] = 'Enter your AutoProctor Client ID.';
 $string['client_secret'] = 'AutoProctor Client Secret';
-$string['client_secret_desc'] = 'Enter your AutoProctor Client Secret from the dashboard';
+$string['client_secret_desc'] = 'Enter your AutoProctor Client Secret.';
 
 // Proctoring requirements and status
 $string['proctoring_required'] = 'This quiz requires proctoring';

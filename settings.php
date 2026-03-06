@@ -28,6 +28,13 @@ if ($hassiteconfig) {
     $settings = new admin_settingpage('quizaccess_autoproctor', get_string('pluginname', 'quizaccess_autoproctor'));
     $ADMIN->add('modsettings', $settings);
 
+    // Credentials info heading
+    $settings->add(new admin_setting_heading(
+        'quizaccess_autoproctor/credentials_info',
+        '',
+        get_string('credentials_info', 'quizaccess_autoproctor')
+    ));
+
     // AutoProctor API Settings
     $settings->add(new admin_setting_configtext(
         'quizaccess_autoproctor/client_id',
