@@ -69,45 +69,38 @@ $string['tracking_group_camera'] = 'Camera Settings';
 $string['tracking_group_activity'] = 'Activity Tracking';
 $string['tracking_group_screen'] = 'Screen Tracking';
 $string['tracking_group_security'] = 'Advanced Security';
-$string['tracking_group_idcard'] = 'ID Card Verification (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra credits</a>)';
 
 // Proctoring options - labels
-$string['tracking_audio'] = 'Audio Detection';
-$string['tracking_numHumans'] = 'Number of Humans';
-$string['tracking_tabSwitch'] = 'Detect Tab Switch';
+$string['tracking_audio'] = 'Detect Audio';
+$string['tracking_numHumans'] = 'Detect Face';
+$string['tracking_tabSwitch'] = 'Detect Switched Tab';
 $string['tracking_disableCopyPaste'] = 'Disable Copy/Paste';
-$string['tracking_captureSwitchedTab'] = 'Capture Switched Tab';
-$string['tracking_photosAtRandom'] = 'Take photos at random';
-$string['tracking_recordSession'] = 'Record screen session (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
-$string['tracking_detectMultipleScreens'] = 'Detect Multiple Screens';
-$string['tracking_testTakerPhoto'] = 'Take photo of test taker';
-$string['tracking_forceFullScreen'] = 'Force full screen';
-$string['tracking_forceDesktop'] = 'Force desktop device';
+$string['tracking_captureSwitchedTab'] = 'Switched Tab Screenshot';
+$string['tracking_photosAtRandom'] = 'Take Random Photos';
+$string['tracking_recordSession'] = 'Record User Session';
+$string['tracking_detectMultipleScreens'] = 'Detect Multiple Monitors';
+$string['tracking_testTakerPhoto'] = 'Capture Photo Before Start Test';
+$string['tracking_forceFullScreen'] = 'Enforce Full Screen';
+$string['tracking_forceDesktop'] = 'Enforce Desktop';
 $string['tracking_multiSessionAttempt'] = 'Multi-session detection';
-$string['tracking_auxiliaryDevice'] = 'Auxiliary device (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
 $string['tracking_impersonation'] = 'Impersonation detection (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
-$string['tracking_idCardVerification_face'] = 'Verify face matches ID';
-$string['tracking_idCardVerification_name'] = 'Verify name matches ID';
-$string['tracking_idCardVerification_expiryDate'] = 'Check ID expiry date';
+$string['tracking_idCardVerification'] = 'ID Card Verification (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
 
 // Proctoring options - help text
-$string['tracking_audio_help'] = 'Detect audio activity from the microphone during the test.';
-$string['tracking_numHumans_help'] = 'Detect if no human or multiple people are visible in the camera frame.';
-$string['tracking_tabSwitch_help'] = 'Detect when the student switches to another browser tab or application.';
+$string['tracking_audio_help'] = 'Record noise and audio cues in the background.';
+$string['tracking_numHumans_help'] = 'Capture a photo if the camera detects no faces or multiple faces.';
+$string['tracking_tabSwitch_help'] = 'When user switches to a different tab/application, we detect this.';
 $string['tracking_disableCopyPaste_help'] = 'Block copy (Ctrl+C / Cmd+C) and paste (Ctrl+V / Cmd+V) keyboard shortcuts during the test.';
-$string['tracking_captureSwitchedTab_help'] = 'Take a screenshot when the student switches away from the test tab.';
-$string['tracking_photosAtRandom_help'] = 'Capture webcam photos at random intervals during the test.';
-$string['tracking_recordSession_help'] = 'Record the student\'s screen throughout the entire test session. Costs extra credits.';
-$string['tracking_detectMultipleScreens_help'] = 'Detect if the student has multiple monitors connected.';
-$string['tracking_testTakerPhoto_help'] = 'Capture a photo of the test taker at the beginning of the test for identity verification.';
-$string['tracking_forceFullScreen_help'] = 'Force the browser into fullscreen mode during the test.';
-$string['tracking_forceDesktop_help'] = 'Require the candidate to use a desktop or laptop device (no mobile devices).';
+$string['tracking_captureSwitchedTab_help'] = 'When user switches to a different tab/application, capture screenshot (Works only on supported browsers).';
+$string['tracking_photosAtRandom_help'] = 'Capture a few photos of the candidate throughout the test.';
+$string['tracking_recordSession_help'] = 'Records the candidate\'s screens and actions (mouse clicks, keyboard typing), as they attempt the test.';
+$string['tracking_detectMultipleScreens_help'] = 'Detect if the candidate is connected to more than one monitor (Works only on supported browsers).';
+$string['tracking_testTakerPhoto_help'] = 'Take a photo of the candidate\'s face before every test starts. For the first test, it is enabled by default.';
+$string['tracking_forceFullScreen_help'] = 'Candidates cannot take the test without entering full-screen mode when this is enabled. Recommended to avoid tab switching and cheating.';
+$string['tracking_forceDesktop_help'] = 'Useful if you are conducting coding challenges, etc which requires the user to have a large screen to work with.';
 $string['tracking_multiSessionAttempt_help'] = 'Detect when the same test attempt is accessed from multiple devices, browsers, or IP addresses.';
-$string['tracking_auxiliaryDevice_help'] = 'Require the candidate to pair their phone for 360-degree proctoring. Test content will not load without pairing. Costs extra credits.';
 $string['tracking_impersonation_help'] = 'Compare random photos with the initial candidate photo to detect if a different person is taking the test. Costs extra credits.';
-$string['tracking_idCardVerification_face_help'] = 'Compare the face on the ID card with the candidate\'s selfie. Automatically enables test taker photo.';
-$string['tracking_idCardVerification_name_help'] = 'Extract and compare the name on the ID card with the candidate\'s registered name.';
-$string['tracking_idCardVerification_expiryDate_help'] = 'Check whether the ID card has expired.';
+$string['tracking_idCardVerification_help'] = 'Verify the candidate\'s identity by comparing their face with their ID card photo, extracting their name, and checking ID expiry date. Costs extra credits.';
 
 // Privacy API strings
 $string['privacy:metadata:quizaccess_autoproctor_sessions'] = 'Stores proctoring session data for quiz attempts.';
