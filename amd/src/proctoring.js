@@ -677,7 +677,7 @@ define(["jquery", "core/templates"], function ($, Templates) {
 
             console.log(`[AP] Waiting for AutoProctor SDK (attempt ${_sdkRetryCount}/${CONFIG.SDK_MAX_RETRIES})...`);
             setTimeout(
-                () => initAutoProctor(clientId, hashedTestAttemptId, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv),
+                () => initAutoProctor(clientId, hashedTestAttemptId, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv, userDetails),
                 CONFIG.SDK_RETRY_DELAY_MS
             );
             return;
