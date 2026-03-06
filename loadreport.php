@@ -1,4 +1,19 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 /**
  * Standalone page to load AutoProctor report for a specific attempt.
  *
@@ -14,13 +29,29 @@ use core\exception\moodle_exception;
 // Security: Require user to be logged in
 require_login();
 
-$PAGE->set_context(context_system::instance());
-
 // Get attempt ID from query parameter
 $attemptid = optional_param('ap_attempt_id', 0, PARAM_ALPHANUMEXT);
 if (!$attemptid) {
     throw new moodle_exception('invalidaccess', 'quizaccess_autoproctor');
 }
+
+// Look up the session to get the quiz context for capability check
+global $DB;
+$session = $DB->get_record('quizaccess_autoproctor_sessions', ['test_attempt_id' => $attemptid]);
+if (!$session) {
+    throw new moodle_exception('invalidaccess', 'quizaccess_autoproctor');
+}
+
+// Get the quiz to find the course module
+$quiz = $DB->get_record('quiz', ['id' => $session->quiz_id], '*', MUST_EXIST);
+$cm = get_coursemodule_from_instance('quiz', $quiz->id, $quiz->course, false, MUST_EXIST);
+$context = context_module::instance($cm->id);
+
+// Set page context before capability check
+$PAGE->set_context($context);
+
+// Security: Require capability to view reports
+require_capability('quizaccess/autoproctor:viewreport', $context);
 
 $PAGE->set_title(get_string('reportpagetitle', 'quizaccess_autoproctor'));
 $PAGE->set_url(new moodle_url(
@@ -44,6 +75,9 @@ $apEntryUrl = $isLocalhost
     ? 'https://ap-development.s3.ap-south-1.amazonaws.com/ap-entry-moodle.js'
     : 'https://cdn.autoproctor.co/ap-entry-moodle.js';
 
+// Load AutoProctor SDK using Moodle's proper JS loading mechanism
+$PAGE->requires->js(new moodle_url($apEntryUrl), true);
+
 // Load autoproctor js module (will be called after SDK loads)
 $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'loadReport', [
     'clientId' => $clientId,
@@ -54,8 +88,5 @@ $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'loadReport', 
 ]);
 
 echo $OUTPUT->header();
-
-// Load AutoProctor SDK
-echo '<script src="' . $apEntryUrl . '"></script>';
 echo $OUTPUT->render_from_template('quizaccess_autoproctor/autoproctor', []);
 echo $OUTPUT->footer();

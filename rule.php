@@ -60,8 +60,9 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     {
         $quizid = $quizobj->get_quiz()->id;
         $proctoring_enabled = self::get_ap_settings($quizid)->proctoring_enabled;
-        if (empty($proctoring_enabled))
+        if (empty($proctoring_enabled)) {
             return null;
+        }
 
         return new self($quizobj, $timenow);
     }

@@ -1,4 +1,19 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 /**
  * Creates a proctoring session for quiz attempts.
  *
@@ -9,7 +24,7 @@
 
 require_once($_SERVER['DOCUMENT_ROOT'] . '/config.php');
 
-global $DB;
+global $DB, $USER;
 
 // Security: Require login and session key validation
 require_login();
@@ -45,6 +60,14 @@ try {
         echo json_encode(['success' => false, 'error' => 'Invalid attempt']);
         exit;
     }
+
+    // Security: Verify the current user owns this attempt
+    if ($attempt->userid != $USER->id) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Access denied']);
+        exit;
+    }
+
     $quizid = $attempt->quiz;
 
     // See if the session already exists
