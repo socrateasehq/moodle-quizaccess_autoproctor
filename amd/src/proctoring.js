@@ -654,16 +654,23 @@ define(["jquery", "core/templates"], function ($, Templates) {
                 // Show error to user and keep buttons disabled
                 const errorDiv = document.createElement("div");
                 errorDiv.className = "alert alert-danger";
-                errorDiv.style.cssText = "margin: 20px; padding: 15px;";
-                errorDiv.innerHTML = `
-                    <strong>AutoProctor Error:</strong> Failed to load AutoProctor SDK.
-                    Please check your internet connection and <a href="javascript:location.reload()">refresh the page</a>.
-                `;
+                errorDiv.style.cssText = "position: fixed; top: 70px; left: 0; right: 0; margin: 0 20px; padding: 15px; z-index: 9999;";
+                const textNode = document.createTextNode("Unable to start proctoring. Please ");
+                const refreshLink = document.createElement("a");
+                refreshLink.href = "#";
+                refreshLink.textContent = "refresh the page";
+                refreshLink.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    location.reload();
+                });
+                errorDiv.appendChild(textNode);
+                errorDiv.appendChild(refreshLink);
+                errorDiv.appendChild(document.createTextNode(" to try again."));
                 document.body.prepend(errorDiv);
 
                 // Update all buttons to show error state (keep disabled)
                 _disabledButtons.forEach(btn => {
-                    setSubmitButtonState(btn, true, "AutoProctor Failed - Refresh Page");
+                    setSubmitButtonState(btn, true, "Proctoring Failed - Refresh Page");
                 });
                 return;
             }
@@ -730,12 +737,20 @@ define(["jquery", "core/templates"], function ($, Templates) {
                 console.error(`[AP] AutoProctor SDK failed to load for report after ${CONFIG.SDK_MAX_RETRIES} attempts`);
                 const loaderEl = document.getElementById("ap-report-loader");
                 if (loaderEl) {
-                    loaderEl.innerHTML = `
-                        <div class="alert alert-danger">
-                            Failed to load AutoProctor SDK.
-                            <a href="javascript:location.reload()">Refresh page</a> to try again.
-                        </div>
-                    `;
+                    loaderEl.textContent = "";
+                    const alertDiv = document.createElement("div");
+                    alertDiv.className = "alert alert-danger";
+                    alertDiv.textContent = "Failed to load AutoProctor SDK. ";
+                    const refreshLink = document.createElement("a");
+                    refreshLink.href = "#";
+                    refreshLink.textContent = "Refresh page";
+                    refreshLink.addEventListener("click", function(e) {
+                        e.preventDefault();
+                        location.reload();
+                    });
+                    alertDiv.appendChild(refreshLink);
+                    alertDiv.appendChild(document.createTextNode(" to try again."));
+                    loaderEl.appendChild(alertDiv);
                 }
                 return;
             }

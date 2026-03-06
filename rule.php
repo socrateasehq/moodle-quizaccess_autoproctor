@@ -339,8 +339,8 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         // If there is an unfinished attempt, check if a session already exists for it
         $session = $unfinishedattempt ? self::get_ap_session($unfinishedattempt->id) : null;
 
-        // Get the test attempt ID from the URL or generate a new one
-        $testAttemptId = optional_param('test-attempt-id', uniqid('ap_'), PARAM_RAW);
+        // Get the test attempt ID from the URL or generate a cryptographically secure one
+        $testAttemptId = optional_param('test-attempt-id', 'ap_' . bin2hex(random_bytes(16)), PARAM_ALPHANUMEXT);
         $tracking_options = self::get_ap_settings($this->quizobj->get_quiz()->id)->tracking_options;
 
         // Build user details to pass to AutoProctor

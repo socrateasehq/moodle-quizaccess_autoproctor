@@ -99,3 +99,9 @@ $string['privacy:metadata:autoproctor_external:screen_recordings'] = 'Screen rec
 $string['privacy:metadata:autoproctor_external:test_attempt_id'] = 'The unique identifier linking this data to the quiz attempt.';
 $string['privacy:metadata:autoproctor_external:tracking_options'] = 'Configuration of which proctoring features were active.';
 $string['privacy:externaldatanote'] = 'Additional proctoring data (webcam photos, audio, screen recordings) is stored on external AutoProctor servers and must be requested directly from AutoProctor.';
+
+// Error messages
+$string['mustacceptproctoring'] = 'You must accept the proctoring requirements to attempt this quiz.';
+
+// Page titles
+$string['reportpagetitle'] = 'AutoProctor Report';

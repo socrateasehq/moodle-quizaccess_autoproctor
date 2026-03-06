@@ -22,7 +22,7 @@ if (!$attemptid) {
     throw new moodle_exception('invalidaccess', 'quizaccess_autoproctor');
 }
 
-$PAGE->set_title('AutoProctor Report');
+$PAGE->set_title(get_string('reportpagetitle', 'quizaccess_autoproctor'));
 $PAGE->set_url(new moodle_url(
     '/mod/quiz/accessrule/autoproctor/loadreport.php',
     ['ap_attempt_id' => $attemptid]
