@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version information for the AutoProctor quiz access rule.
+ * External services definition for quizaccess_autoproctor.
  *
  * @package    quizaccess_autoproctor
  * @copyright  2024 AutoProctor
@@ -24,11 +24,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2026030502;
-$plugin->requires = 2022112800;
-$plugin->component = 'quizaccess_autoproctor';
-$plugin->maturity = MATURITY_BETA;
-$plugin->release = 'v0.1';
-$plugin->dependencies = [
-    'theme_boost' => ANY_VERSION,
+$functions = [
+    'quizaccess_autoproctor_create_session' => [
+        'classname'     => 'quizaccess_autoproctor\external\create_session',
+        'description'   => 'Creates a proctoring session for a quiz attempt',
+        'type'          => 'write',
+        'ajax'          => true,
+        'loginrequired' => true,
+    ],
 ];
