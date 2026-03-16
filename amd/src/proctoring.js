@@ -199,7 +199,7 @@ define(["jquery", "core/templates", "core/ajax"], function($, Templates, Ajax) {
      * And will stop on any other page
      * @param {string} newUrl - The new URL of the iframe
      */
-    const handleIframeUrlChange = async (newUrl) => {
+    const handleIframeUrlChange = async(newUrl) => {
         const fileLocation = getUrlFileLocation(newUrl);
 
         /**
@@ -212,7 +212,7 @@ define(["jquery", "core/templates", "core/ajax"], function($, Templates, Ajax) {
         if (fileLocation === "summary.php") {
             // Handle quiz submission process
             const handleFinalSubmit = ($finalSubmitBtn) => {
-                $finalSubmitBtn.addEventListener("click", async (e) => {
+                $finalSubmitBtn.addEventListener("click", async(e) => {
                     if (proctoringInProgress) {
                         // Prevent Moodle's redirect until AutoProctor finishes
                         e.preventDefault();
@@ -284,14 +284,15 @@ define(["jquery", "core/templates", "core/ajax"], function($, Templates, Ajax) {
             methodname: 'quizaccess_autoproctor_create_session',
             args: {
                 attemptid: parseInt(attemptId, 10),
-                test_attempt_id: testAttemptId,
-                tracking_options: JSON.stringify(trackingOptions),
+                test_attempt_id: testAttemptId, // eslint-disable-line camelcase
+                tracking_options: JSON.stringify(trackingOptions), // eslint-disable-line camelcase
             },
         }])[0]
             .then(data => {
                 if (!data.success) {
                     // Session creation failed.
                 }
+                return data;
             })
             .catch(() => {
                 // Session creation error occurred.
@@ -333,7 +334,7 @@ define(["jquery", "core/templates", "core/ajax"], function($, Templates, Ajax) {
      * Adds a page loader to the document body.
      * Caches loader in window object for later use
      */
-    const addPageLoader = async () => {
+    const addPageLoader = async() => {
         const loaderName = "ap-iframe-loader";
         $apIframeLoader = document.createElement("div");
         $apIframeLoader.id = loaderName;
@@ -423,7 +424,7 @@ define(["jquery", "core/templates", "core/ajax"], function($, Templates, Ajax) {
         }
 
         // Intercept submit event
-        $preflightForm.addEventListener("submit", async (e) => {
+        $preflightForm.addEventListener("submit", async(e) => {
             e.preventDefault();
 
             if (isPreflightFormSubmitted) {
