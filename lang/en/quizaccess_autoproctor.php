@@ -24,27 +24,27 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-// Plugin information
+// Plugin information.
 $string['pluginname'] = 'AutoProctor Integration';
 
-// Client credentials
+// Client credentials.
 $string['credentials_info'] = 'Don\'t have credentials yet? <a href="https://www.autoproctor.co/developers/register/" target="_blank">Get your Client ID and Secret here</a>.';
 $string['client_id'] = 'AutoProctor Client ID';
 $string['client_id_desc'] = 'Enter your AutoProctor Client ID.';
 $string['client_secret'] = 'AutoProctor Client Secret';
 $string['client_secret_desc'] = 'Enter your AutoProctor Client Secret.';
 
-// Proctoring requirements and status
+// Proctoring requirements and status.
 $string['proctoring_required'] = 'This quiz requires proctoring';
 $string['credentials_not_set'] = 'AutoProctor key-pair (credentials) are not set. If you dont have them, you can get your key-pair <a href="https://autoproctor.co/developers/register/" target="_blank">here</a>.';
 $string['start_proctoring'] = 'Start Proctored Session';
 $string['proctoring_not_ready'] = 'AutoProctor is not ready yet. You can only attempt the quiz when AutoProctor setup is complete.';
 
-// Default settings
+// Default settings.
 $string['enable_by_default'] = 'Enable AutoProctor by default';
 $string['enable_by_default_desc'] = 'If enabled, AutoProctor will be enabled for all new quizzes by default';
 
-// Help and permissions
+// Help and permissions.
 $string['autoproctor_desc_headsup'] = 'This quiz is using AutoProctor to proctor the test. You can only attempt the quiz when AutoProctor is running.';
 $string['requireautoproctor_help'] = 'If enabled, students can only attempt the quiz when AutoProctor is running';
 $string['proctoringheader'] = 'You will need to grant access to the following to attempt this quiz:';
@@ -53,25 +53,25 @@ $string['permission_screen'] = 'Screen';
 $string['permission_microphone'] = 'Microphone';
 $string['permission_camera'] = 'Camera';
 
-// Results and reporting
+// Results and reporting.
 $string['autoproctorresults'] = 'View AutoProctor Results';
 $string['autoproctorresultslink'] = 'https://autoproctor.co/test-admin/developers/results/';
 $string['autoproctor:viewreport'] = 'View AutoProctor Results';
 $string['viewattemptreport'] = 'View Proctoring Report';
 $string['viewattemptreportlink'] = 'https://www.autoproctor.co/test-admin/developers/test-attempts/';
 
-// AutoProctor settings
+// AutoProctor settings.
 $string['autoproctorsettings'] = 'AutoProctor Settings';
 $string['requireautoproctor'] = 'Turn AutoProctor On';
 $string['requireautoproctor_desc'] = 'If enabled, students can only attempt the quiz when AutoProctor is running';
 
-// Tracking groups
+// Tracking groups.
 $string['tracking_group_camera'] = 'Camera Settings';
 $string['tracking_group_activity'] = 'Activity Tracking';
 $string['tracking_group_screen'] = 'Screen Tracking';
 $string['tracking_group_security'] = 'Advanced Security';
 
-// Proctoring options - labels
+// Proctoring options - labels.
 $string['tracking_audio'] = 'Detect Audio';
 $string['tracking_numHumans'] = 'Detect Face';
 $string['tracking_tabSwitch'] = 'Detect Switched Tab';
@@ -87,7 +87,7 @@ $string['tracking_multiSessionAttempt'] = 'Multi-session detection';
 $string['tracking_impersonation'] = 'Impersonation detection (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
 $string['tracking_idCardVerification'] = 'ID Card Verification (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
 
-// Proctoring options - help text
+// Proctoring options - help text.
 $string['tracking_audio_help'] = 'Record noise and audio cues in the background.';
 $string['tracking_numHumans_help'] = 'Capture a photo if the camera detects no faces or multiple faces.';
 $string['tracking_tabSwitch_help'] = 'When user switches to a different tab/application, we detect this.';
@@ -103,7 +103,7 @@ $string['tracking_multiSessionAttempt_help'] = 'Detect when the same test attemp
 $string['tracking_impersonation_help'] = 'Compare random photos with the initial candidate photo to detect if a different person is taking the test. Costs extra credits.';
 $string['tracking_idCardVerification_help'] = 'Verify the candidate\'s identity by comparing their face with their ID card photo, extracting their name, and checking ID expiry date. Costs extra credits.';
 
-// Privacy API strings
+// Privacy API strings.
 $string['privacy:metadata:quizaccess_autoproctor_sessions'] = 'Stores proctoring session data for quiz attempts.';
 $string['privacy:metadata:quizaccess_autoproctor_sessions:quiz_id'] = 'The ID of the quiz being proctored.';
 $string['privacy:metadata:quizaccess_autoproctor_sessions:quiz_attempt_id'] = 'The ID of the quiz attempt being proctored.';
@@ -120,7 +120,7 @@ $string['privacy:metadata:autoproctor_external:test_attempt_id'] = 'The unique i
 $string['privacy:metadata:autoproctor_external:tracking_options'] = 'Configuration of which proctoring features were active.';
 $string['privacy:externaldatanote'] = 'Additional proctoring data (webcam photos, audio, screen recordings) is stored on external AutoProctor servers and must be requested directly from AutoProctor.';
 
-// Error messages
+// Error messages.
 $string['invalidaccess'] = 'Invalid or missing proctoring session. Please start your quiz attempt again.';
 $string['mustacceptproctoring'] = 'You must accept the proctoring requirements to attempt this quiz.';
 $string['error_methodnotallowed'] = 'Method not allowed';
@@ -130,10 +130,10 @@ $string['error_accessdenied'] = 'Access denied';
 $string['error_database'] = 'Database error occurred';
 $string['error_general'] = 'An error occurred';
 
-// Page titles
+// Page titles.
 $string['reportpagetitle'] = 'AutoProctor Report';
 
-// Template strings
+// Template strings.
 $string['report_title'] = 'AutoProctor';
 $string['report_welcome'] = 'Welcome to the AutoProctor Plugin! AutoProctor is an automated tool which ensures that users do not cheat on exams while taking online exams. It tracks their environment and activities using their camera, mic and screen they are sharing. Based on these violations, it calculates a Trust Score and also generates a report of the violations.';
 $string['loader_setup'] = 'Setting Up AutoProctor. If this process is very slow, it means you need better internet connectivity.';

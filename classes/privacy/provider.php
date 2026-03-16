@@ -35,8 +35,6 @@ use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Privacy provider for quizaccess_autoproctor.
  *
@@ -45,10 +43,9 @@ defined('MOODLE_INTERNAL') || die();
  * stored on external AutoProctor servers.
  */
 class provider implements
-    metadata_provider,
     core_userlist_provider,
+    metadata_provider,
     plugin_provider {
-
     /**
      * Returns metadata about the personal data stored by this plugin.
      *
@@ -248,7 +245,7 @@ class provider implements
             );
 
             if (!empty($attemptids)) {
-                list($insql, $inparams) = $DB->get_in_or_equal($attemptids);
+                [$insql, $inparams] = $DB->get_in_or_equal($attemptids);
                 $DB->delete_records_select(
                     'quizaccess_autoproctor_sessions',
                     "quiz_attempt_id $insql",
@@ -282,7 +279,7 @@ class provider implements
             return;
         }
 
-        list($usersql, $userparams) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
+        [$usersql, $userparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
 
         // Get quiz attempts for these users.
         $sql = "SELECT id FROM {quiz_attempts}
@@ -292,7 +289,7 @@ class provider implements
         $attemptids = $DB->get_fieldset_sql($sql, $params);
 
         if (!empty($attemptids)) {
-            list($insql, $inparams) = $DB->get_in_or_equal($attemptids);
+            [$insql, $inparams] = $DB->get_in_or_equal($attemptids);
             $DB->delete_records_select(
                 'quizaccess_autoproctor_sessions',
                 "quiz_attempt_id $insql",

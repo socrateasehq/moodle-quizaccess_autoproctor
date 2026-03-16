@@ -26,31 +26,31 @@ require_once($_SERVER['DOCUMENT_ROOT'] . '/config.php');
 
 use core\exception\moodle_exception;
 
-// Security: Require user to be logged in
+// Security: Require user to be logged in.
 require_login();
 
-// Get attempt ID from query parameter
+// Get attempt ID from query parameter.
 $attemptid = optional_param('ap_attempt_id', 0, PARAM_ALPHANUMEXT);
 if (!$attemptid) {
     throw new moodle_exception('invalidaccess', 'quizaccess_autoproctor');
 }
 
-// Look up the session to get the quiz context for capability check
+// Look up the session to get the quiz context for capability check.
 global $DB;
 $session = $DB->get_record('quizaccess_autoproctor_sessions', ['test_attempt_id' => $attemptid]);
 if (!$session) {
     throw new moodle_exception('invalidaccess', 'quizaccess_autoproctor');
 }
 
-// Get the quiz to find the course module
+// Get the quiz to find the course module.
 $quiz = $DB->get_record('quiz', ['id' => $session->quiz_id], '*', MUST_EXIST);
 $cm = get_coursemodule_from_instance('quiz', $quiz->id, $quiz->course, false, MUST_EXIST);
 $context = context_module::instance($cm->id);
 
-// Set page context before capability check
+// Set page context before capability check.
 $PAGE->set_context($context);
 
-// Security: Require capability to view reports
+// Security: Require capability to view reports.
 require_capability('quizaccess/autoproctor:viewreport', $context);
 
 $PAGE->set_title(get_string('reportpagetitle', 'quizaccess_autoproctor'));
@@ -78,7 +78,7 @@ $apentryurl = $islocalhost
 // Load AutoProctor SDK using Moodle's proper JS loading mechanism.
 $PAGE->requires->js(new moodle_url($apentryurl), true);
 
-// Load autoproctor js module (will be called after SDK loads).
+// Load AutoProctor JS module (will be called after SDK loads).
 $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'loadReport', [
     'clientId' => $clientid,
     'hashedTestAttemptId' => $hashedtestattemptid,

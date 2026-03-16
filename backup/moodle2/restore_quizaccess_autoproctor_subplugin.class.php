@@ -35,7 +35,6 @@ require_once($CFG->dirroot . '/mod/quiz/backup/moodle2/restore_mod_quiz_access_s
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class restore_quizaccess_autoproctor_subplugin extends restore_mod_quiz_access_subplugin {
-
     /**
      * Returns the paths to be handled by the subplugin at quiz level.
      *

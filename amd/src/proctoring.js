@@ -17,11 +17,10 @@
  * AutoProctor proctoring module for quiz access.
  *
  * @module     quizaccess_autoproctor/proctoring
- * @package    quizaccess_autoproctor
  * @copyright  2024 AutoProctor
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) {
+define(["jquery", "core/templates", "core/ajax"], function($, Templates, Ajax) {
     // Constants
     const IFRAME_NAME = "ap-iframe";
     const MOODLE_PREFLIGHT_FORM_ID = "mod_quiz_preflight_form";
@@ -184,7 +183,7 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
 
         // Check for timeout
         if (Date.now() - startTime > CONFIG.LOADER_CHECK_TIMEOUT_MS) {
-            console.warn(`[AP] Loader check timed out after ${CONFIG.LOADER_CHECK_TIMEOUT_MS}ms`);
+            // Loader check timed out.
             $apIframeLoader?.remove();
             return;
         }
@@ -277,7 +276,7 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
         const attemptId = params.get("attempt");
 
         if (!attemptId) {
-            console.error("[AP] Missing attemptId for session creation");
+            // Missing attemptId for session creation.
             return;
         }
 
@@ -291,19 +290,19 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
         }])[0]
             .then(data => {
                 if (!data.success) {
-                    console.error("[AP] Session creation failed:", data.error);
+                    // Session creation failed.
                 }
             })
             .catch(error => {
-                console.error("[AP] Session creation error:", error);
+                // Session creation error occurred.
                 if (retriesLeft > 0) {
-                    console.log(`[AP] Retrying session creation (${retriesLeft} attempts left)...`);
+                    // Retrying session creation.
                     setTimeout(
                         () => createNewApSession(url, testAttemptId, trackingOptions, retriesLeft - 1),
                         CONFIG.SESSION_RETRY_DELAY_MS
                     );
                 } else {
-                    console.error("[AP] Session creation failed after all retries");
+                    // Session creation failed after all retries.
                 }
             });
     };
@@ -375,7 +374,7 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
      */
     const bindApProgressUpdate = () => {
         window.addEventListener("apProgressUpdate", (e) => {
-            const { action } = e.detail;
+            const {action} = e.detail;
             if (action === "hide") {
                 isApProgressCompleted = true;
                 // Don't hide loader here - let hideLoaderIfProgressCompleted handle it
@@ -525,12 +524,12 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
                 // Check for timeout
                 if (Date.now() - startTime > CONFIG.ELEMENT_WAIT_TIMEOUT_MS) {
                     clearInterval(elementIntervalId);
-                    console.warn(`[AP] Element "${selector}" not found after ${CONFIG.ELEMENT_WAIT_TIMEOUT_MS}ms`);
+                    // Element not found after timeout.
                 }
             } catch (err) {
                 // Handle cross-origin errors when accessing iframe content
                 clearInterval(elementIntervalId);
-                console.error(`[AP] Error waiting for element "${selector}":`, err);
+                // Error waiting for element.
             }
         }, CONFIG.ELEMENT_WAIT_INTERVAL_MS);
     };
@@ -561,7 +560,9 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
      * @param {string} loadingText - Text to show while loading (optional)
      */
     function setSubmitButtonState($submitBtn, disabled, loadingText = null) {
-        if (!$submitBtn) return;
+        if (!$submitBtn) {
+            return;
+        }
 
         $submitBtn.disabled = disabled;
 
@@ -640,7 +641,29 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
     // Track disabled buttons across retries
     let _disabledButtons = [];
 
-    async function initAutoProctor(clientId, hashedTestAttemptId, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv, userDetails) {
+    /**
+     * Initializes the AutoProctor SDK with the provided credentials and options.
+     * @param {string} clientId - The client ID for authentication
+     * @param {string} hashedTestAttemptId - Pre-computed HMAC-SHA256 hash (base64 encoded)
+     * @param {string} testAttemptId - The test attempt ID for this session
+     * @param {object} trackingOptions - The tracking options configuration
+     * @param {number} cmid - The course module ID
+     * @param {string} lookupKey - The lookup key for the session
+     * @param {string} apDomain - The AutoProctor API domain
+     * @param {string} apEnv - The environment (development/production)
+     * @param {object} userDetails - User details for identification
+     */
+    async function initAutoProctor(
+        clientId,
+        hashedTestAttemptId,
+        testAttemptId,
+        trackingOptions,
+        cmid,
+        lookupKey,
+        apDomain,
+        apEnv,
+        userDetails
+    ) {
         // Don't initialize if we're inside an iframe (prevents double initialization on redirect pages)
         if (window !== window.top) {
             return;
@@ -662,7 +685,7 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
             _sdkRetryCount++;
 
             if (_sdkRetryCount > CONFIG.SDK_MAX_RETRIES) {
-                console.error(`[AP] AutoProctor SDK failed to load after ${CONFIG.SDK_MAX_RETRIES} attempts`);
+                // AutoProctor SDK failed to load after max attempts.
                 // Show error to user and keep buttons disabled
                 const errorDiv = document.createElement("div");
                 errorDiv.className = "alert alert-danger";
@@ -687,7 +710,7 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
                 return;
             }
 
-            console.log(`[AP] Waiting for AutoProctor SDK (attempt ${_sdkRetryCount}/${CONFIG.SDK_MAX_RETRIES})...`);
+            // Waiting for AutoProctor SDK.
             setTimeout(
                 () => initAutoProctor(clientId, hashedTestAttemptId, testAttemptId, trackingOptions, cmid, lookupKey, apDomain, apEnv, userDetails),
                 CONFIG.SDK_RETRY_DELAY_MS
@@ -740,13 +763,20 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
     // Track SDK loading retries for loadReport
     let _reportSdkRetryCount = 0;
 
-    function loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv, userDetails) {
+    function loadReport(
+        clientId,
+        hashedTestAttemptId,
+        testAttemptId,
+        apDomain,
+        apEnv,
+        userDetails
+    ) {
         // Check if AutoProctor is already loaded and retry if not
         if (typeof window.AutoProctor === "undefined" || typeof window.AutoProctor !== "function") {
             _reportSdkRetryCount++;
 
             if (_reportSdkRetryCount > CONFIG.SDK_MAX_RETRIES) {
-                console.error(`[AP] AutoProctor SDK failed to load for report after ${CONFIG.SDK_MAX_RETRIES} attempts`);
+                // AutoProctor SDK failed to load for report after max attempts.
                 const loaderEl = document.getElementById("ap-report-loader");
                 if (loaderEl) {
                     loaderEl.textContent = "";
@@ -767,8 +797,11 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
                 return;
             }
 
-            console.log(`[AP] Waiting for AutoProctor SDK for report (attempt ${_reportSdkRetryCount}/${CONFIG.SDK_MAX_RETRIES})...`);
-            setTimeout(() => loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv), CONFIG.SDK_RETRY_DELAY_MS);
+            // Waiting for AutoProctor SDK for report.
+            setTimeout(
+                () => loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv),
+                CONFIG.SDK_RETRY_DELAY_MS
+            );
             return;
         }
 
@@ -833,7 +866,17 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
      * @param {string} apEnv - The environment (development/production)
      * @param {{name: string, email: string}} [userDetails] - Optional user details to be passed to AutoProctor
      */
-    function addReportButton(reportUrl, buttonLabel, clientId, hashedTestAttemptId, testAttemptId, trackingOptions, apDomain, apEnv, userDetails) {
+    function addReportButton(
+        reportUrl,
+        buttonLabel,
+        clientId,
+        hashedTestAttemptId,
+        testAttemptId,
+        trackingOptions,
+        apDomain,
+        apEnv,
+        userDetails
+    ) {
         // Determine if session recording was enabled for this attempt
         const showSessionRecording = trackingOptions?.recordSession !== false;
         // Track if report has been loaded
@@ -910,8 +953,10 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
             // The summary table is inside a wrapper div (e.g., div.mb-3)
             // The quiz questions are siblings of that wrapper, not children
             // So we need to go up to the grandparent level
-            const summaryWrapper = targetElement.parentElement; // div.mb-3
-            const mainContent = summaryWrapper.parentElement;   // parent that contains both wrapper and questions
+            // The div.mb-3 wrapper element.
+            const summaryWrapper = targetElement.parentElement;
+            // Parent that contains both wrapper and questions.
+            const mainContent = summaryWrapper.parentElement;
 
             // Create tabs bar
             const tabsBar = document.createElement("div");
