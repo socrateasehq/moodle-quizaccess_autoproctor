@@ -29,6 +29,7 @@ use core_privacy\local\metadata\provider as metadata_provider;
 use core_privacy\local\request\approved_contextlist;
 use core_privacy\local\request\approved_userlist;
 use core_privacy\local\request\contextlist;
+use core_privacy\local\request\core_userlist_provider;
 use core_privacy\local\request\plugin\provider as plugin_provider;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
@@ -45,8 +46,8 @@ defined('MOODLE_INTERNAL') || die();
  */
 class provider implements
     metadata_provider,
-    plugin_provider,
-    \core_privacy\local\request\core_userlist_provider {
+    core_userlist_provider,
+    plugin_provider {
 
     /**
      * Returns metadata about the personal data stored by this plugin.

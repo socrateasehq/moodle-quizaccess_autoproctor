@@ -44,7 +44,6 @@ if (class_exists('\mod_quiz\local\access_rule_base')) {
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias {
-
     /** @var string CDN URL for production environment. */
     private const AP_CDN_PRODUCTION = 'https://cdn.autoproctor.co/ap-entry-moodle.js';
 

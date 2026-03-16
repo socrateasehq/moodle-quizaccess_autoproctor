@@ -35,7 +35,6 @@ use external_value;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class create_session extends external_api {
-
     /**
      * Returns description of method parameters.
      *
@@ -142,7 +141,6 @@ class create_session extends external_api {
                 'session_id' => (int)$session->id,
                 'is_new_session' => true,
             ];
-
         } catch (dml_exception $e) {
             // Database errors - don't expose details.
             debugging('[AutoProctor] Session creation database error: ' . $e->getMessage(), DEBUG_DEVELOPER);

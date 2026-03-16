@@ -60,31 +60,31 @@ $PAGE->set_url(new moodle_url(
 ));
 
 // Get client ID and secret from config.
-$client_id = get_config('quizaccess_autoproctor', 'client_id');
-$client_secret = get_config('quizaccess_autoproctor', 'client_secret');
+$clientid = get_config('quizaccess_autoproctor', 'client_id');
+$clientsecret = get_config('quizaccess_autoproctor', 'client_secret');
 
 // Compute hash server-side to avoid exposing client secret to browser.
-$hashed_test_attempt_id = base64_encode(hash_hmac('sha256', $attemptid, $client_secret, true));
+$hashedtestattemptid = base64_encode(hash_hmac('sha256', $attemptid, $clientsecret, true));
 
 // Determine environment based on hostname.
-$is_localhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'])
+$islocalhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'])
     || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost:') === 0;
-$ap_domain = $is_localhost ? 'https://dev.autoproctor.co' : 'https://autoproctor.co';
-$ap_env = $is_localhost ? 'development' : 'production';
-$ap_entry_url = $is_localhost
+$apdomain = $islocalhost ? 'https://dev.autoproctor.co' : 'https://autoproctor.co';
+$apenv = $islocalhost ? 'development' : 'production';
+$apentryurl = $islocalhost
     ? 'https://ap-development.s3.ap-south-1.amazonaws.com/ap-entry-moodle.js'
     : 'https://cdn.autoproctor.co/ap-entry-moodle.js';
 
 // Load AutoProctor SDK using Moodle's proper JS loading mechanism.
-$PAGE->requires->js(new moodle_url($ap_entry_url), true);
+$PAGE->requires->js(new moodle_url($apentryurl), true);
 
 // Load autoproctor js module (will be called after SDK loads).
 $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'loadReport', [
-    'clientId' => $client_id,
-    'hashedTestAttemptId' => $hashed_test_attempt_id,
+    'clientId' => $clientid,
+    'hashedTestAttemptId' => $hashedtestattemptid,
     'testAttemptId' => $attemptid,
-    'apDomain' => $ap_domain,
-    'apEnv' => $ap_env,
+    'apDomain' => $apdomain,
+    'apEnv' => $apenv,
 ]);
 
 echo $OUTPUT->header();
