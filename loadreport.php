@@ -59,32 +59,32 @@ $PAGE->set_url(new moodle_url(
     ['ap_attempt_id' => $attemptid]
 ));
 
-// Get client ID and secret from config
-$clientId = get_config('quizaccess_autoproctor', 'client_id');
-$clientSecret = get_config('quizaccess_autoproctor', 'client_secret');
+// Get client ID and secret from config.
+$client_id = get_config('quizaccess_autoproctor', 'client_id');
+$client_secret = get_config('quizaccess_autoproctor', 'client_secret');
 
-// Compute hash server-side to avoid exposing client secret to browser
-$hashedTestAttemptId = base64_encode(hash_hmac('sha256', $attemptid, $clientSecret, true));
+// Compute hash server-side to avoid exposing client secret to browser.
+$hashed_test_attempt_id = base64_encode(hash_hmac('sha256', $attemptid, $client_secret, true));
 
-// Determine environment based on hostname
-$isLocalhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'])
+// Determine environment based on hostname.
+$is_localhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'])
     || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost:') === 0;
-$apDomain = $isLocalhost ? 'https://dev.autoproctor.co' : 'https://autoproctor.co';
-$apEnv = $isLocalhost ? 'development' : 'production';
-$apEntryUrl = $isLocalhost
+$ap_domain = $is_localhost ? 'https://dev.autoproctor.co' : 'https://autoproctor.co';
+$ap_env = $is_localhost ? 'development' : 'production';
+$ap_entry_url = $is_localhost
     ? 'https://ap-development.s3.ap-south-1.amazonaws.com/ap-entry-moodle.js'
     : 'https://cdn.autoproctor.co/ap-entry-moodle.js';
 
-// Load AutoProctor SDK using Moodle's proper JS loading mechanism
-$PAGE->requires->js(new moodle_url($apEntryUrl), true);
+// Load AutoProctor SDK using Moodle's proper JS loading mechanism.
+$PAGE->requires->js(new moodle_url($ap_entry_url), true);
 
-// Load autoproctor js module (will be called after SDK loads)
+// Load autoproctor js module (will be called after SDK loads).
 $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'loadReport', [
-    'clientId' => $clientId,
-    'hashedTestAttemptId' => $hashedTestAttemptId,
+    'clientId' => $client_id,
+    'hashedTestAttemptId' => $hashed_test_attempt_id,
     'testAttemptId' => $attemptid,
-    'apDomain' => $apDomain,
-    'apEnv' => $apEnv,
+    'apDomain' => $ap_domain,
+    'apEnv' => $ap_env,
 ]);
 
 echo $OUTPUT->header();
