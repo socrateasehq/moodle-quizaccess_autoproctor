@@ -28,6 +28,11 @@ require_once($CFG->dirroot . '/mod/quiz/backup/moodle2/backup_mod_quiz_access_su
 
 /**
  * Provides the backup steps for the autoproctor quiz access rule.
+ *
+ * @package    quizaccess_autoproctor
+ * @category   backup
+ * @copyright  2024 AutoProctor
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class backup_quizaccess_autoproctor_subplugin extends backup_mod_quiz_access_subplugin {
 

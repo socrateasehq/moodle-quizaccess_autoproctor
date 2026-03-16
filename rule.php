@@ -36,46 +36,76 @@ if (class_exists('\mod_quiz\local\access_rule_base')) {
     class_alias('\quiz', '\quizaccess_autoproctor_quiz_settings_class_alias');
 }
 
-class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
-{
-    // Environment URLs
+/**
+ * Quiz access rule for AutoProctor proctoring.
+ *
+ * @package   quizaccess_autoproctor
+ * @copyright 2024 AutoProctor
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias {
+
+    /** @var string CDN URL for production environment. */
     private const AP_CDN_PRODUCTION = 'https://cdn.autoproctor.co/ap-entry-moodle.js';
+
+    /** @var string CDN URL for development environment. */
     private const AP_CDN_DEVELOPMENT = 'https://ap-development.s3.ap-south-1.amazonaws.com/ap-entry-moodle.js';
+
+    /** @var string Domain URL for production environment. */
     private const AP_DOMAIN_PRODUCTION = 'https://www.autoproctor.co';
+
+    /** @var string Domain URL for development environment. */
     private const AP_DOMAIN_DEVELOPMENT = 'https://dev.autoproctor.co';
 
-    /** @var quizaccess_autoproctor_quiz_settings_class_alias */
+    /** @var quizaccess_autoproctor_quiz_settings_class_alias The quiz object. */
     protected $quizobj;
 
-    /** @var string */
-    protected $test_attempt_id;
+    /** @var string The test attempt ID. */
+    protected $testattemptid;
 
-    public function __construct($quizobj, $timenow)
-    {
+    /**
+     * Constructor.
+     *
+     * @param quizaccess_autoproctor_quiz_settings_class_alias $quizobj The quiz object.
+     * @param int $timenow The current time.
+     */
+    public function __construct($quizobj, $timenow) {
         parent::__construct($quizobj, $timenow);
         $this->quizobj = $quizobj;
     }
 
-    public static function make(quizaccess_autoproctor_quiz_settings_class_alias $quizobj, $timenow, $canignoretimelimits)
-    {
+    /**
+     * Factory method to create the rule if applicable.
+     *
+     * @param quizaccess_autoproctor_quiz_settings_class_alias $quizobj The quiz object.
+     * @param int $timenow The current time.
+     * @param bool $canignoretimelimits Whether time limits can be ignored.
+     * @return quizaccess_autoproctor|null The rule instance or null.
+     */
+    public static function make(quizaccess_autoproctor_quiz_settings_class_alias $quizobj, $timenow, $canignoretimelimits) {
         $quizid = $quizobj->get_quiz()->id;
-        $proctoring_enabled = self::get_ap_settings($quizid)->proctoring_enabled;
-        if (empty($proctoring_enabled)) {
+        $proctoringenabled = self::get_ap_settings($quizid)->proctoring_enabled;
+        if (empty($proctoringenabled)) {
             return null;
         }
 
         return new self($quizobj, $timenow);
     }
 
-    public static function add_settings_form_fields(mod_quiz_mod_form $quizform, MoodleQuickForm $mform)
-    {
-        // Get the current autoproctor settings for the quiz
-        $ap_settings = self::get_ap_settings($quizform->get_current()->id);
+    /**
+     * Add any fields to the quiz settings form.
+     *
+     * @param mod_quiz_mod_form $quizform The quiz form.
+     * @param MoodleQuickForm $mform The form object.
+     */
+    public static function add_settings_form_fields(mod_quiz_mod_form $quizform, MoodleQuickForm $mform) {
+        // Get the current autoproctor settings for the quiz.
+        $apsettings = self::get_ap_settings($quizform->get_current()->id);
 
-        // Create header for tracking options
+        // Create header for tracking options.
         $mform->addElement('header', 'autoproctorsettings', get_string('autoproctorsettings', 'quizaccess_autoproctor'));
 
-        // Add main AutoProctor toggle
+        // Add main AutoProctor toggle.
         $mform->addElement(
             'selectyesno',
             'requireautoproctor',
@@ -88,14 +118,14 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         );
         $mform->setDefault(
             'requireautoproctor',
-            $ap_settings->proctoring_enabled ?? get_config(
+            $apsettings->proctoring_enabled ?? get_config(
                 'quizaccess_autoproctor',
                 'enable_by_default'
             )
         );
 
-        // Add nested tracking options (boolean options)
-        $tracking_options = [
+        // Add nested tracking options (boolean options).
+        $trackingoptions = [
             'activity' => [
                 'audio' => get_string('tracking_audio', 'quizaccess_autoproctor'),
                 'numHumans' => get_string('tracking_numHumans', 'quizaccess_autoproctor'),
@@ -118,8 +148,8 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             ],
         ];
 
-        // Default values for options (false = off by default, true = on by default)
-        $option_defaults = [
+        // Default values for options.
+        $optiondefaults = [
             'audio' => 1,
             'numHumans' => 1,
             'tabSwitch' => 1,
@@ -136,8 +166,8 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             'idCardVerification' => 0,
         ];
 
-        foreach ($tracking_options as $group => $options) {
-            // Add group header
+        foreach ($trackingoptions as $group => $options) {
+            // Add group header.
             $mform->addElement(
                 'static',
                 $group . '_header',
@@ -146,46 +176,51 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             );
 
             foreach ($options as $option => $string) {
-                $element_name = "tracking_{$option}";
+                $elementname = "tracking_{$option}";
                 $mform->addElement(
                     'selectyesno',
-                    $element_name,
+                    $elementname,
                     $string
                 );
-                $mform->addHelpButton($element_name, "tracking_{$option}", 'quizaccess_autoproctor');
+                $mform->addHelpButton($elementname, "tracking_{$option}", 'quizaccess_autoproctor');
 
-                // Handle idCardVerification option (check if enabled as object)
+                // Handle idCardVerification option (check if enabled as object).
                 if ($option === 'idCardVerification') {
-                    $default_value = !empty($ap_settings->tracking_options['idCardVerification']) ? 1 : 0;
+                    $defaultvalue = !empty($apsettings->tracking_options['idCardVerification']) ? 1 : 0;
                 } else {
-                    $default_value = $ap_settings->tracking_options[$option] ?? $option_defaults[$option] ?? 0;
+                    $defaultvalue = $apsettings->tracking_options[$option] ?? $optiondefaults[$option] ?? 0;
                 }
 
-                $mform->setDefault($element_name, $default_value);
-                $mform->disabledIf($element_name, 'requireautoproctor', 'eq', 0);
-                $mform->setType($element_name, PARAM_INT);
+                $mform->setDefault($elementname, $defaultvalue);
+                $mform->disabledIf($elementname, 'requireautoproctor', 'eq', 0);
+                $mform->setType($elementname, PARAM_INT);
             }
         }
     }
 
-    public static function save_settings($quiz)
-    {
+    /**
+     * Save the quiz settings from the form.
+     *
+     * @param stdClass $quiz The quiz data from the form.
+     * @return bool True on success.
+     */
+    public static function save_settings($quiz) {
         global $DB;
 
-        // Get existing settings to preserve tracking options
+        // Get existing settings to preserve tracking options.
         $existing = $DB->get_record('quizaccess_autoproctor', ['quiz_id' => $quiz->id]);
-        $existing_options = $existing ? json_decode($existing->tracking_options, true) : [];
+        $existingoptions = $existing ? json_decode($existing->tracking_options, true) : [];
 
-        // Prepare record for database
+        // Prepare record for database.
         $record = new stdClass();
         $record->quiz_id = $quiz->id;
         $record->proctoring_enabled = empty($quiz->requireautoproctor) ? 0 : 1;
 
-        // Prepare tracking options
-        $tracking_options = new stdClass();
+        // Prepare tracking options.
+        $trackingoptions = new stdClass();
 
-        // Boolean options with their default values
-        $boolean_options = [
+        // Boolean options with their default values.
+        $booleanoptions = [
             'audio' => true,
             'numHumans' => true,
             'tabSwitch' => true,
@@ -201,38 +236,38 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             'impersonation' => false,
         ];
 
-        foreach ($boolean_options as $option => $default) {
-            $form_field = "tracking_{$option}";
-            // If proctoring is enabled, use form values, otherwise keep existing values
+        foreach ($booleanoptions as $option => $default) {
+            $formfield = "tracking_{$option}";
+            // If proctoring is enabled, use form values, otherwise keep existing values.
             if ($record->proctoring_enabled) {
-                $tracking_options->$option = isset($quiz->$form_field) ? (bool) $quiz->$form_field : $default;
+                $trackingoptions->$option = isset($quiz->$formfield) ? (bool) $quiz->$formfield : $default;
             } else {
-                $tracking_options->$option = $existing_options[$option] ?? $default;
+                $trackingoptions->$option = $existingoptions[$option] ?? $default;
             }
-            unset($quiz->$form_field);
+            unset($quiz->$formfield);
         }
 
-        // Handle idCardVerification - when enabled, set all sub-options to true
-        $form_field = "tracking_idCardVerification";
+        // Handle idCardVerification - when enabled, set all sub-options to true.
+        $formfield = "tracking_idCardVerification";
         if ($record->proctoring_enabled) {
-            $idcard_enabled = isset($quiz->$form_field) ? (bool) $quiz->$form_field : false;
+            $idcardenabled = isset($quiz->$formfield) ? (bool) $quiz->$formfield : false;
         } else {
-            $idcard_enabled = !empty($existing_options['idCardVerification']);
+            $idcardenabled = !empty($existingoptions['idCardVerification']);
         }
-        unset($quiz->$form_field);
+        unset($quiz->$formfield);
 
-        // If idCardVerification is enabled, set all sub-options to true
-        if ($idcard_enabled) {
-            $tracking_options->idCardVerification = (object) [
+        // If idCardVerification is enabled, set all sub-options to true.
+        if ($idcardenabled) {
+            $trackingoptions->idCardVerification = (object) [
                 'face' => true,
                 'name' => true,
                 'expiryDate' => true,
             ];
         }
 
-        $record->tracking_options = json_encode($tracking_options);
+        $record->tracking_options = json_encode($trackingoptions);
 
-        // Insert or update the record
+        // Insert or update the record.
         if ($existing) {
             $record->timemodified = time();
             $record->id = $existing->id;
@@ -254,8 +289,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
      * @return mixed a message, or array of messages, explaining the restriction
      * @throws coding_exception
      */
-    public function description()
-    {
+    public function description() {
         $messages = [get_string('autoproctor_desc_headsup', 'quizaccess_autoproctor')];
         $messages[] = $this->get_download_config_button();
 
@@ -264,24 +298,30 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
 
     /**
      * Whether this rule requires a preflight check before starting a new attempt.
+     *
+     * @param int|null $attemptid The attempt ID.
+     * @return bool Whether a preflight check is required.
      */
-    public function is_preflight_check_required($attemptid)
-    {
+    public function is_preflight_check_required($attemptid) {
         global $PAGE;
 
-        // Check if proctoring is enabled for this quiz
-        $proctoring_enabled = self::get_ap_settings($this->quizobj->get_quiz()->id)->proctoring_enabled;
-        if (!$proctoring_enabled) {
+        // Check if proctoring is enabled for this quiz.
+        $proctoringenabled = self::get_ap_settings($this->quizobj->get_quiz()->id)->proctoring_enabled;
+        if (!$proctoringenabled) {
             return false;
         }
 
-        // Only require preflight check on view.php
-        $is_view_page = strpos($PAGE->url->get_path(), '/mod/quiz/view.php') !== false;
-        return $is_view_page;
+        // Only require preflight check on view.php.
+        $isviewpage = strpos($PAGE->url->get_path(), '/mod/quiz/view.php') !== false;
+        return $isviewpage;
     }
 
     /**
-     * Add any fields that this rule requires to the quiz settings form.
+     * Add any fields that this rule requires to the preflight check form.
+     *
+     * @param quizaccess_autoproctor_preflight_form_alias $quizform The preflight form.
+     * @param MoodleQuickForm $mform The form object.
+     * @param int $attemptid The attempt ID.
      */
     public function add_preflight_check_form_fields(
         quizaccess_autoproctor_preflight_form_alias $quizform,
@@ -290,13 +330,13 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     ) {
         global $PAGE, $DB, $USER;
 
-        // Get tracking options to determine which permissions are needed
-        $tracking_options = self::get_ap_settings($this->quizobj->get_quiz()->id)->tracking_options;
+        // Get tracking options to determine which permissions are needed.
+        $trackingoptions = self::get_ap_settings($this->quizobj->get_quiz()->id)->tracking_options;
 
-        // Build dynamic permissions list based on tracking options
-        $permissions_html = $this->build_permissions_list($tracking_options);
+        // Build dynamic permissions list based on tracking options.
+        $permissionshtml = $this->build_permissions_list($trackingoptions);
 
-        // Add consent checkbox
+        // Add consent checkbox.
         $mform->addElement(
             'header',
             'autoproctorheader',
@@ -307,7 +347,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             'static',
             'autoproctor_permissions',
             '',
-            $permissions_html
+            $permissionshtml
         );
         $mform->addElement(
             'checkbox',
@@ -318,20 +358,20 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
 
         // Get client credentials.
         $creds = self::get_credentials();
-        if (empty($creds['client_id']) || empty($creds['client_secret'])) {
+        if (empty($creds['clientid']) || empty($creds['clientsecret'])) {
             \core\notification::error(get_string('credentials_not_set', 'quizaccess_autoproctor'));
             return;
         }
 
-        // Check for unfinished attempt
+        // Check for unfinished attempt.
         $unfinishedattempt = quiz_get_user_attempt_unfinished($this->quizobj->get_quiz()->id, $USER->id);
 
-        // If there is an unfinished attempt, check if a session already exists for it
+        // If there is an unfinished attempt, check if a session already exists for it.
         $session = $unfinishedattempt ? self::get_ap_session($unfinishedattempt->id) : null;
 
         // Get the test attempt ID from the URL or generate a cryptographically secure one.
-        $test_attempt_id = optional_param('test-attempt-id', 'ap_' . bin2hex(random_bytes(16)), PARAM_ALPHANUMEXT);
-        $tracking_options = self::get_ap_settings($this->quizobj->get_quiz()->id)->tracking_options;
+        $testattemptid = optional_param('test-attempt-id', 'ap_' . bin2hex(random_bytes(16)), PARAM_ALPHANUMEXT);
+        $trackingoptions = self::get_ap_settings($this->quizobj->get_quiz()->id)->tracking_options;
 
         // Build user details to pass to AutoProctor.
         $userdetails = [
@@ -341,45 +381,45 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
 
         if ($session) {
             // If session exists, use that test attempt ID.
-            $test_attempt_id = $session->test_attempt_id;
+            $testattemptid = $session->test_attempt_id;
         }
 
         // Get environment configuration.
-        $env_config = self::get_environment_config();
+        $envconfig = self::get_environment_config();
 
         // Include AutoProctor SDK.
-        $PAGE->requires->js(new moodle_url($env_config['ap_entry_url']), true);
+        $PAGE->requires->js(new moodle_url($envconfig['apentryurl']), true);
 
-        $this->test_attempt_id = $test_attempt_id;
+        $this->testattemptid = $testattemptid;
 
         // Compute hash server-side to avoid exposing client secret to browser.
-        $hashed_test_attempt_id = self::hash_test_attempt_id($test_attempt_id, $creds['client_secret']);
+        $hashedtestattemptid = self::hash_test_attempt_id($testattemptid, $creds['clientsecret']);
 
         // Include necessary scripts/styles for AutoProctor during preflight check.
         $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'init', [
-            'clientId' => $creds['client_id'],
-            'hashedTestAttemptId' => $hashed_test_attempt_id,
-            'testAttemptId' => $test_attempt_id,
-            'trackingOptions' => $tracking_options,
+            'clientId' => $creds['clientid'],
+            'hashedTestAttemptId' => $hashedtestattemptid,
+            'testAttemptId' => $testattemptid,
+            'trackingOptions' => $trackingoptions,
             'cmid' => $this->quizobj->get_quiz()->cmid,
             'lookupKey' => $this->get_lookup_key(),
-            'apDomain' => $env_config['ap_domain'],
-            'apEnv' => $env_config['ap_env'],
+            'apDomain' => $envconfig['apdomain'],
+            'apEnv' => $envconfig['apenv'],
             'userDetails' => $userdetails,
         ]);
     }
 
     /**
-     * Validate the preflight check
-     * @param array $data
-     * @param array $files
-     * @param array $errors
-     * @param int $attemptid
-     * @return array
+     * Validate the preflight check.
+     *
+     * @param array $data The form data.
+     * @param array $files The uploaded files.
+     * @param array $errors Existing errors.
+     * @param int $attemptid The attempt ID.
+     * @return array The errors array.
      */
-    public function validate_preflight_check($data, $files, $errors, $attemptid)
-    {
-        // Ignore all AutoProctor preflight check if $errors is not empty.
+    public function validate_preflight_check($data, $files, $errors, $attemptid) {
+        // Ignore all AutoProctor preflight check if errors is not empty.
         if (!empty($errors)) {
             return $errors;
         }
@@ -392,12 +432,12 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     }
 
     /**
-     * Get the AutoProctor settings for a quiz from the database
-     * @param int $quizid
-     * @return stdClass
+     * Get the AutoProctor settings for a quiz from the database.
+     *
+     * @param int $quizid The quiz ID.
+     * @return stdClass The settings object.
      */
-    private static function get_ap_settings($quizid)
-    {
+    private static function get_ap_settings($quizid) {
         global $DB;
         $result = new stdClass();
         $record = $DB->get_record('quizaccess_autoproctor', ['quiz_id' => $quizid]);
@@ -413,23 +453,23 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     }
 
     /**
-     * Get the AutoProctor session for an attempt
-     * @param int $attemptid
-     * @return stdClass
+     * Get the AutoProctor session for an attempt.
+     *
+     * @param int $attemptid The attempt ID.
+     * @return stdClass|false The session record or false.
      */
-    private static function get_ap_session($attemptid)
-    {
+    private static function get_ap_session($attemptid) {
         global $DB;
         return $DB->get_record('quizaccess_autoproctor_sessions', ['quiz_attempt_id' => $attemptid]);
     }
 
     /**
-     * Get the lookup key for the AutoProctor report
-     * Lookup key = <siteidentifier>_<cmid>_<quizid>
-     * @return string
+     * Get the lookup key for the AutoProctor report.
+     * Lookup key = siteidentifier_cmid_quizid.
+     *
+     * @return string The lookup key.
      */
-    private function get_lookup_key()
-    {
+    private function get_lookup_key() {
         global $CFG;
         return $CFG->siteidentifier . '_' . $this->quizobj->get_quiz()->cmid . '_' . $this->quizobj->get_quiz()->id;
     }
@@ -438,36 +478,29 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
      * Get environment configuration based on hostname.
      * Returns URLs and settings for development vs production environment.
      *
-     * @return array [
-     *     'isLocalhost' => bool,
-     *     'apDomain' => string,
-     *     'apEnv' => string,
-     *     'apEntryUrl' => string
-     * ]
+     * @return array Configuration array with isLocalhost, apDomain, apEnv, apEntryUrl.
      */
-    private static function get_environment_config(): array
-    {
-        $is_localhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'])
+    private static function get_environment_config(): array {
+        $islocalhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'])
             || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost:') === 0;
 
         return [
-            'is_localhost' => $is_localhost,
-            'ap_domain' => $is_localhost ? self::AP_DOMAIN_DEVELOPMENT : self::AP_DOMAIN_PRODUCTION,
-            'ap_env' => $is_localhost ? 'development' : 'production',
-            'ap_entry_url' => $is_localhost ? self::AP_CDN_DEVELOPMENT : self::AP_CDN_PRODUCTION
+            'islocalhost' => $islocalhost,
+            'apdomain' => $islocalhost ? self::AP_DOMAIN_DEVELOPMENT : self::AP_DOMAIN_PRODUCTION,
+            'apenv' => $islocalhost ? 'development' : 'production',
+            'apentryurl' => $islocalhost ? self::AP_CDN_DEVELOPMENT : self::AP_CDN_PRODUCTION,
         ];
     }
 
     /**
      * Get AutoProctor API credentials from plugin settings.
      *
-     * @return array ['clientId' => string, 'clientSecret' => string]
+     * @return array Credentials array with clientid and clientsecret.
      */
-    private static function get_credentials(): array
-    {
+    private static function get_credentials(): array {
         return [
-            'client_id' => get_config('quizaccess_autoproctor', 'client_id'),
-            'client_secret' => get_config('quizaccess_autoproctor', 'client_secret')
+            'clientid' => get_config('quizaccess_autoproctor', 'client_id'),
+            'clientsecret' => get_config('quizaccess_autoproctor', 'client_secret'),
         ];
     }
 
@@ -475,50 +508,48 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
      * Generate HMAC-SHA256 hash of test attempt ID for SDK authentication.
      * This is computed server-side to avoid exposing the client secret to the browser.
      *
-     * @param string $test_attempt_id The test attempt ID to hash
-     * @param string $client_secret The client secret key
-     * @return string Base64-encoded HMAC-SHA256 hash
+     * @param string $testattemptid The test attempt ID to hash.
+     * @param string $clientsecret The client secret key.
+     * @return string Base64-encoded HMAC-SHA256 hash.
      */
-    private static function hash_test_attempt_id(string $test_attempt_id, string $client_secret): string
-    {
-        $hash = hash_hmac('sha256', $test_attempt_id, $client_secret, true);
+    private static function hash_test_attempt_id(string $testattemptid, string $clientsecret): string {
+        $hash = hash_hmac('sha256', $testattemptid, $clientsecret, true);
         return base64_encode($hash);
     }
 
     /**
      * Build the permissions list HTML based on which tracking options are enabled.
      *
-     * @param array $tracking_options The tracking options for this quiz
-     * @return string HTML for the permissions list
+     * @param array $trackingoptions The tracking options for this quiz.
+     * @return string HTML for the permissions list.
      */
-    private function build_permissions_list(array $tracking_options): string
-    {
+    private function build_permissions_list(array $trackingoptions): string {
         $permissions = [];
 
-        // Screen is needed for: recordSession, captureSwitchedTab, detectMultipleScreens, forceFullScreen
-        $needs_screen = !empty($tracking_options['recordSession'])
-            || !empty($tracking_options['captureSwitchedTab'])
-            || !empty($tracking_options['detectMultipleScreens'])
-            || !empty($tracking_options['forceFullScreen']);
+        // Screen is needed for: recordSession, captureSwitchedTab, detectMultipleScreens, forceFullScreen.
+        $needsscreen = !empty($trackingoptions['recordSession'])
+            || !empty($trackingoptions['captureSwitchedTab'])
+            || !empty($trackingoptions['detectMultipleScreens'])
+            || !empty($trackingoptions['forceFullScreen']);
 
-        // Microphone is needed for: audio
-        $needs_microphone = !empty($tracking_options['audio']);
+        // Microphone is needed for: audio.
+        $needsmicrophone = !empty($trackingoptions['audio']);
 
-        // Camera is needed for: testTakerPhoto, photosAtRandom, numHumans, impersonation, idCardVerification
-        $needs_camera = !empty($tracking_options['testTakerPhoto'])
-            || !empty($tracking_options['photosAtRandom'])
-            || !empty($tracking_options['numHumans'])
-            || !empty($tracking_options['impersonation'])
-            || !empty($tracking_options['idCardVerification']);
+        // Camera is needed for: testTakerPhoto, photosAtRandom, numHumans, impersonation, idCardVerification.
+        $needscamera = !empty($trackingoptions['testTakerPhoto'])
+            || !empty($trackingoptions['photosAtRandom'])
+            || !empty($trackingoptions['numHumans'])
+            || !empty($trackingoptions['impersonation'])
+            || !empty($trackingoptions['idCardVerification']);
 
         $counter = 1;
-        if ($needs_screen) {
+        if ($needsscreen) {
             $permissions[] = '<li>' . $counter++ . '. ' . get_string('permission_screen', 'quizaccess_autoproctor') . '</li>';
         }
-        if ($needs_microphone) {
+        if ($needsmicrophone) {
             $permissions[] = '<li>' . $counter++ . '. ' . get_string('permission_microphone', 'quizaccess_autoproctor') . '</li>';
         }
-        if ($needs_camera) {
+        if ($needscamera) {
             $permissions[] = '<li>' . $counter++ . '. ' . get_string('permission_camera', 'quizaccess_autoproctor') . '</li>';
         }
 
@@ -538,25 +569,25 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     public function setup_attempt_page($page) {
         global $DB, $USER;
 
-        // Only add report button on review.php
-        $is_review_page = strpos($page->url->get_path(), '/mod/quiz/review.php') !== false;
-        if (!$is_review_page) {
+        // Only add report button on review.php.
+        $isreviewpage = strpos($page->url->get_path(), '/mod/quiz/review.php') !== false;
+        if (!$isreviewpage) {
             return;
         }
 
-        // Check if user has permission to view reports
+        // Check if user has permission to view reports.
         $context = context_module::instance($this->quizobj->get_quiz()->cmid, MUST_EXIST);
         if (!has_capability('quizaccess/autoproctor:viewreport', $context, $USER->id)) {
             return;
         }
 
-        // Get the attempt ID from URL
+        // Get the attempt ID from URL.
         $attemptid = optional_param('attempt', 0, PARAM_INT);
         if (empty($attemptid)) {
             return;
         }
 
-        // Get the session for this attempt
+        // Get the session for this attempt.
         $session = self::get_ap_session($attemptid);
         if (!$session || empty($session->test_attempt_id)) {
             return;
@@ -564,48 +595,47 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
 
         // Get credentials.
         $creds = self::get_credentials();
-        if (empty($creds['client_id']) || empty($creds['client_secret'])) {
+        if (empty($creds['clientid']) || empty($creds['clientsecret'])) {
             return;
         }
 
         // Get environment configuration.
-        $env_config = self::get_environment_config();
+        $envconfig = self::get_environment_config();
 
         // Build the report URL.
-        $report_base_url = get_string('viewattemptreportlink', 'quizaccess_autoproctor');
-        $report_url = $report_base_url . $session->test_attempt_id . '/';
-        $button_label = get_string('viewattemptreport', 'quizaccess_autoproctor');
+        $reportbaseurl = get_string('viewattemptreportlink', 'quizaccess_autoproctor');
+        $reporturl = $reportbaseurl . $session->test_attempt_id . '/';
+        $buttonlabel = get_string('viewattemptreport', 'quizaccess_autoproctor');
 
         // Include AutoProctor SDK.
-        $page->requires->js(new moodle_url($env_config['ap_entry_url']), true);
+        $page->requires->js(new moodle_url($envconfig['apentryurl']), true);
 
         // Get tracking options from session to determine which tabs to show.
-        $tracking_options = json_decode($session->tracking_options, true) ?? [];
+        $trackingoptions = json_decode($session->tracking_options, true) ?? [];
 
         // Compute hash server-side to avoid exposing client secret to browser.
-        $hashed_test_attempt_id = self::hash_test_attempt_id($session->test_attempt_id, $creds['client_secret']);
+        $hashedtestattemptid = self::hash_test_attempt_id($session->test_attempt_id, $creds['clientsecret']);
 
         // Call JS to add the report button.
         $page->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'addReportButton', [
-            'reportUrl' => $report_url,
-            'buttonLabel' => $button_label,
-            'clientId' => $creds['client_id'],
-            'hashedTestAttemptId' => $hashed_test_attempt_id,
+            'reportUrl' => $reporturl,
+            'buttonLabel' => $buttonlabel,
+            'clientId' => $creds['clientid'],
+            'hashedTestAttemptId' => $hashedtestattemptid,
             'testAttemptId' => $session->test_attempt_id,
-            'trackingOptions' => $tracking_options,
-            'apDomain' => $env_config['ap_domain'],
-            'apEnv' => $env_config['ap_env'],
+            'trackingOptions' => $trackingoptions,
+            'apDomain' => $envconfig['apdomain'],
+            'apEnv' => $envconfig['apenv'],
         ]);
     }
 
     /**
      * Get a button to view the Proctoring report.
      *
-     * @return string A link to view report
+     * @return string A link to view report.
      * @throws coding_exception
      */
-    private function get_download_config_button(): string
-    {
+    private function get_download_config_button(): string {
         global $OUTPUT, $USER;
 
         $context = context_module::instance($this->quizobj->get_quiz()->cmid, MUST_EXIST);
@@ -614,14 +644,14 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             $httplink = get_string('autoproctorresultslink', 'quizaccess_autoproctor');
             $httplink = "$httplink?lookup_key={$this->get_lookup_key()}";
             $button = $OUTPUT->single_button($httplink, get_string('autoproctorresults', 'quizaccess_autoproctor'), 'get', [
-                'style' => 'text-align: center; border: 1px solid #106bbf; background-color: white; color: #106bbf; padding: 5px 10px; display: inline-block;',
+                'style' => 'text-align: center; border: 1px solid #106bbf; background-color: white; ' .
+                    'color: #106bbf; padding: 5px 10px; display: inline-block;',
                 'onmouseover' => "this.style.backgroundColor='#106bbf'; this.style.color='white';",
-                'onmouseout' => "this.style.backgroundColor='white'; this.style.color='#106bbf';"
+                'onmouseout' => "this.style.backgroundColor='white'; this.style.color='#106bbf';",
             ]);
             return $button;
         } else {
             return '';
         }
     }
-
 }
