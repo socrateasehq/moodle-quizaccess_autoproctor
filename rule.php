@@ -48,7 +48,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
     protected $quizobj;
 
     /** @var string */
-    protected $test_attempt_id;
+    protected $testattemptid;
 
     public function __construct($quizobj, $timenow)
     {
@@ -330,7 +330,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         $session = $unfinishedattempt ? self::get_ap_session($unfinishedattempt->id) : null;
 
         // Get the test attempt ID from the URL or generate a cryptographically secure one.
-        $test_attempt_id = optional_param('test-attempt-id', 'ap_' . bin2hex(random_bytes(16)), PARAM_ALPHANUMEXT);
+        $testattemptid = optional_param('test-attempt-id', 'ap_' . bin2hex(random_bytes(16)), PARAM_ALPHANUMEXT);
         $tracking_options = self::get_ap_settings($this->quizobj->get_quiz()->id)->tracking_options;
 
         // Build user details to pass to AutoProctor.
@@ -341,7 +341,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
 
         if ($session) {
             // If session exists, use that test attempt ID.
-            $test_attempt_id = $session->test_attempt_id;
+            $testattemptid = $session->test_attempt_id;
         }
 
         // Get environment configuration.
@@ -350,16 +350,16 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         // Include AutoProctor SDK.
         $PAGE->requires->js(new moodle_url($env_config['ap_entry_url']), true);
 
-        $this->test_attempt_id = $test_attempt_id;
+        $this->testattemptid = $testattemptid;
 
         // Compute hash server-side to avoid exposing client secret to browser.
-        $hashed_test_attempt_id = self::hash_test_attempt_id($test_attempt_id, $creds['client_secret']);
+        $hashedtestattemptid = self::hash_test_attempt_id($testattemptid, $creds['client_secret']);
 
         // Include necessary scripts/styles for AutoProctor during preflight check.
         $PAGE->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'init', [
             'clientId' => $creds['client_id'],
-            'hashedTestAttemptId' => $hashed_test_attempt_id,
-            'testAttemptId' => $test_attempt_id,
+            'hashedTestAttemptId' => $hashedtestattemptid,
+            'testAttemptId' => $testattemptid,
             'trackingOptions' => $tracking_options,
             'cmid' => $this->quizobj->get_quiz()->cmid,
             'lookupKey' => $this->get_lookup_key(),
@@ -475,13 +475,13 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
      * Generate HMAC-SHA256 hash of test attempt ID for SDK authentication.
      * This is computed server-side to avoid exposing the client secret to the browser.
      *
-     * @param string $test_attempt_id The test attempt ID to hash
-     * @param string $client_secret The client secret key
+     * @param string $testattemptid The test attempt ID to hash
+     * @param string $clientsecret The client secret key
      * @return string Base64-encoded HMAC-SHA256 hash
      */
-    private static function hash_test_attempt_id(string $test_attempt_id, string $client_secret): string
+    private static function hash_test_attempt_id(string $testattemptid, string $clientsecret): string
     {
-        $hash = hash_hmac('sha256', $test_attempt_id, $client_secret, true);
+        $hash = hash_hmac('sha256', $testattemptid, $clientsecret, true);
         return base64_encode($hash);
     }
 
@@ -583,14 +583,14 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
         $tracking_options = json_decode($session->tracking_options, true) ?? [];
 
         // Compute hash server-side to avoid exposing client secret to browser.
-        $hashed_test_attempt_id = self::hash_test_attempt_id($session->test_attempt_id, $creds['client_secret']);
+        $hashedtestattemptid = self::hash_test_attempt_id($session->test_attempt_id, $creds['client_secret']);
 
         // Call JS to add the report button.
         $page->requires->js_call_amd('quizaccess_autoproctor/proctoring', 'addReportButton', [
             'reportUrl' => $report_url,
             'buttonLabel' => $button_label,
             'clientId' => $creds['client_id'],
-            'hashedTestAttemptId' => $hashed_test_attempt_id,
+            'hashedTestAttemptId' => $hashedtestattemptid,
             'testAttemptId' => $session->test_attempt_id,
             'trackingOptions' => $tracking_options,
             'apDomain' => $env_config['ap_domain'],
