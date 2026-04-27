@@ -32,6 +32,7 @@ defined('MOODLE_INTERNAL') || die();
  * are filtered out. This class returns null until the settings are first saved,
  * allowing the info text to appear during initial plugin installation.
  */
+if (!class_exists('quizaccess_autoproctor_setting_info')) {
 class quizaccess_autoproctor_setting_info extends admin_setting {
     public function __construct($name, $description) {
         parent::__construct($name, '', $description, '');
@@ -55,6 +56,7 @@ class quizaccess_autoproctor_setting_info extends admin_setting {
         $html .= '<input type="hidden" name="' . $this->get_full_name() . '" value="1" />';
         return format_admin_setting($this, '', $html, '', true, '', null, $query);
     }
+}
 }
 
 if ($hassiteconfig) {
