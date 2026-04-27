@@ -30,7 +30,7 @@ $string['pluginname'] = 'AutoProctor Integration';
 // Client credentials
 $string['credentials_info'] = 'Don\'t have credentials yet? <a href="https://www.autoproctor.co/developers/register/" target="_blank">Get your Client ID and Secret here</a>.';
 $string['client_id'] = 'AutoProctor Client ID';
-$string['client_id_desc'] = 'Enter your AutoProctor Client ID.';
+$string['client_id_desc'] = 'Enter your AutoProctor Client ID. Don\'t have credentials yet? <a href="https://www.autoproctor.co/developers/register/" target="_blank">Get your Client ID and Secret here</a>.';
 $string['client_secret'] = 'AutoProctor Client Secret';
 $string['client_secret_desc'] = 'Enter your AutoProctor Client Secret.';
 
