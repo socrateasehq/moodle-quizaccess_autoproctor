@@ -52,9 +52,14 @@ class quizaccess_autoproctor_setting_info extends admin_setting {
     }
 
     public function output_html($data, $query = '') {
-        $html = '<div>' . $this->description . '</div>';
+        $html = '<div class="form-item row" id="admin-' . $this->name . '">';
+        $html .= '<div class="form-label col-sm-3"></div>';
+        $html .= '<div class="form-setting col-sm-9">';
+        $html .= '<div class="form-description mt-3 mb-3">' . highlight($query, $this->description) . '</div>';
         $html .= '<input type="hidden" name="' . $this->get_full_name() . '" value="1" />';
-        return format_admin_setting($this, '', $html, '', true, '', null, $query);
+        $html .= '</div>';
+        $html .= '</div>';
+        return $html;
     }
 }
 }
