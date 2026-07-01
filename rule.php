@@ -439,7 +439,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
      * Returns URLs and settings for development vs production environment.
      *
      * @return array [
-     *     'isLocalhost' => bool,
+     *     'is_dev' => bool,
      *     'apDomain' => string,
      *     'apEnv' => string,
      *     'apEntryUrl' => string
@@ -447,14 +447,16 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
      */
     private static function get_environment_config(): array
     {
-        $is_localhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'])
-            || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost:') === 0;
+        global $CFG;
+        // Dev mode is opt-in via config.php ($CFG->quizaccess_autoproctor_devmode = true).
+        // Everyone else - including testers running on localhost - uses production.
+        $is_dev = !empty($CFG->quizaccess_autoproctor_devmode);
 
         return [
-            'is_localhost' => $is_localhost,
-            'ap_domain' => $is_localhost ? self::AP_DOMAIN_DEVELOPMENT : self::AP_DOMAIN_PRODUCTION,
-            'ap_env' => $is_localhost ? 'development' : 'production',
-            'ap_entry_url' => $is_localhost ? self::AP_CDN_DEVELOPMENT : self::AP_CDN_PRODUCTION
+            'is_dev' => $is_dev,
+            'ap_domain' => $is_dev ? self::AP_DOMAIN_DEVELOPMENT : self::AP_DOMAIN_PRODUCTION,
+            'ap_env' => $is_dev ? 'development' : 'production',
+            'ap_entry_url' => $is_dev ? self::AP_CDN_DEVELOPMENT : self::AP_CDN_PRODUCTION
         ];
     }
 

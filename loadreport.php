@@ -66,12 +66,13 @@ $client_secret = get_config('quizaccess_autoproctor', 'client_secret');
 // Compute hash server-side to avoid exposing client secret to browser.
 $hashed_test_attempt_id = base64_encode(hash_hmac('sha256', $attemptid, $client_secret, true));
 
-// Determine environment based on hostname.
-$is_localhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'])
-    || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost:') === 0;
-$ap_domain = $is_localhost ? 'https://dev.autoproctor.co' : 'https://autoproctor.co';
-$ap_env = $is_localhost ? 'development' : 'production';
-$ap_entry_url = $is_localhost
+// Determine environment. Dev mode is opt-in via config.php
+// ($CFG->quizaccess_autoproctor_devmode = true); default is production.
+global $CFG;
+$is_dev = !empty($CFG->quizaccess_autoproctor_devmode);
+$ap_domain = $is_dev ? 'https://dev.autoproctor.co' : 'https://autoproctor.co';
+$ap_env = $is_dev ? 'development' : 'production';
+$ap_entry_url = $is_dev
     ? 'https://ap-development.s3.ap-south-1.amazonaws.com/ap-entry-moodle.js'
     : 'https://cdn.autoproctor.co/ap-entry-moodle.js';
 

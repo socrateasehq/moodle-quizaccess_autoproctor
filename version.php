@@ -24,11 +24,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2026042700;
+$plugin->version = 2026070100;
 $plugin->requires = 2022112800;
 $plugin->component = 'quizaccess_autoproctor';
 $plugin->maturity = MATURITY_BETA;
-$plugin->release = 'v0.3';
+$plugin->release = 'v0.3.1';
 $plugin->dependencies = [
     'theme_boost' => ANY_VERSION,
 ];
