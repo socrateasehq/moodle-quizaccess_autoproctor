@@ -90,9 +90,11 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
             showProctoringOverview: true,
             showProctoringSummary: true,
             showSessionRecording: includeSessionRecording,
+            showTestTakerRecording: true,
             proctoringSummaryDOMId: "ap-report__proctor",
             proctoringOverviewDOMId: "ap-report__overview",
             sessionRecordingDOMId: "ap-report__session",
+            testTakerRecordingDOMId: "ap-report__testtaker",
             groupReportsIntoTabs: false,
             showDownloadReportBtn: true,
         };
@@ -836,6 +838,8 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
     function addReportButton(reportUrl, buttonLabel, clientId, hashedTestAttemptId, testAttemptId, trackingOptions, apDomain, apEnv, userDetails) {
         // Determine if session recording was enabled for this attempt
         const showSessionRecording = trackingOptions?.recordSession !== false;
+        // Candidate (test taker) recording is opt-in; only show when explicitly enabled
+        const showTestTakerRecording = trackingOptions?.recordTestTaker === true;
         // Track if report has been loaded
         let reportLoaded = false;
 
@@ -845,13 +849,17 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
 
         // Tab switching helper function
         const switchTab = (activeTabId) => {
-            // Only include session recording tab if it was enabled
-            const tabs = showSessionRecording
-                ? ["test-summary-tab", "proctoring-summary-tab", "session-recording-tab"]
-                : ["test-summary-tab", "proctoring-summary-tab"];
-            const contents = showSessionRecording
-                ? ["ap-test-summary-content", "ap-report-content", "ap-report__session"]
-                : ["ap-test-summary-content", "ap-report-content"];
+            // Build tab/content lists, appending recording tabs only when enabled
+            const tabs = ["test-summary-tab", "proctoring-summary-tab"];
+            const contents = ["ap-test-summary-content", "ap-report-content"];
+            if (showSessionRecording) {
+                tabs.push("session-recording-tab");
+                contents.push("ap-report__session");
+            }
+            if (showTestTakerRecording) {
+                tabs.push("candidate-recording-tab");
+                contents.push("ap-report__testtaker");
+            }
 
             tabs.forEach((tabId, index) => {
                 const tab = document.getElementById(tabId);
@@ -865,8 +873,11 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
                     tab.style.cssText = activeTabStyle + " cursor: pointer; white-space: nowrap;";
                     content.style.display = "block";
 
-                    // Load proctoring report when switching to proctoring tab (lazy load)
-                    if (tabId === "proctoring-summary-tab" && !reportLoaded) {
+                    // Load the report the first time ANY report tab is opened (lazy load).
+                    // showReport populates every section at once, including the recording
+                    // tabs, so opening Session/Candidate Recording first must load it too.
+                    const reportTabIds = ["proctoring-summary-tab", "session-recording-tab", "candidate-recording-tab"];
+                    if (reportTabIds.includes(tabId) && !reportLoaded) {
                         reportLoaded = true;
                         loadReport(clientId, hashedTestAttemptId, testAttemptId, apDomain, apEnv, userDetails);
 
@@ -924,6 +935,13 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
                         Session Recording
                     </div>`
                 : "";
+            // Build candidate recording tab HTML only if enabled
+            const candidateRecordingTabHtml = showTestTakerRecording
+                ? `<div id="candidate-recording-tab"
+                         style="${inactiveTabStyle} cursor: pointer; white-space: nowrap;">
+                        Candidate Recording
+                    </div>`
+                : "";
 
             tabsBar.innerHTML = `
                 <div id="ap-report-tabs" style="display: flex; gap: 24px; font-size: 16px;
@@ -938,6 +956,7 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
                         Proctoring Summary
                     </div>
                     ${sessionRecordingTabHtml}
+                    ${candidateRecordingTabHtml}
                     <a href="${reportUrl}" target="_blank"
                        style="margin-left: auto; color: #106bbf; font-size: 14px; text-decoration: none;
                               display: flex; align-items: center; gap: 4px;">
@@ -981,6 +1000,14 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
                 sessionContainer.style.cssText = "display: none;";
             }
 
+            // Create candidate recording container only if enabled
+            let testTakerContainer = null;
+            if (showTestTakerRecording) {
+                testTakerContainer = document.createElement("div");
+                testTakerContainer.id = "ap-report__testtaker";
+                testTakerContainer.style.cssText = "display: none;";
+            }
+
             // Collect all siblings that come AFTER the summaryWrapper (questions, submit buttons, etc.)
             const allChildren = Array.from(mainContent.children);
             const summaryWrapperIndex = allChildren.indexOf(summaryWrapper);
@@ -989,7 +1016,8 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
                 el.id !== "ap-tabs-container" &&
                 el.id !== "ap-test-summary-content" &&
                 el.id !== "ap-report-content" &&
-                el.id !== "ap-report__session"
+                el.id !== "ap-report__session" &&
+                el.id !== "ap-report__testtaker"
             );
 
             // Insert tabs bar after the summary wrapper
@@ -1000,6 +1028,9 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
             testSummaryWrapper.after(proctoringContainer);
             if (sessionContainer) {
                 proctoringContainer.after(sessionContainer);
+            }
+            if (testTakerContainer) {
+                (sessionContainer || proctoringContainer).after(testTakerContainer);
             }
 
             // Move all the quiz content (questions, etc.) into test summary wrapper
@@ -1018,6 +1049,12 @@ define(["jquery", "core/templates", "core/ajax"], function ($, Templates, Ajax) 
             if (showSessionRecording) {
                 const sessionTab = document.getElementById("session-recording-tab");
                 sessionTab?.addEventListener("click", () => switchTab("session-recording-tab"));
+            }
+
+            // Only add candidate recording tab listener if it exists
+            if (showTestTakerRecording) {
+                const candidateTab = document.getElementById("candidate-recording-tab");
+                candidateTab?.addEventListener("click", () => switchTab("candidate-recording-tab"));
             }
         };
 

@@ -107,6 +107,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
                 'photosAtRandom' => get_string('tracking_photosAtRandom', 'quizaccess_autoproctor'),
                 'impersonation' => get_string('tracking_impersonation', 'quizaccess_autoproctor'),
                 'idCardVerification' => get_string('tracking_idCardVerification', 'quizaccess_autoproctor'),
+                'recordTestTaker' => get_string('tracking_recordTestTaker', 'quizaccess_autoproctor'),
             ],
             'screen' => [
                 'tabSwitch' => get_string('tracking_tabSwitch', 'quizaccess_autoproctor'),
@@ -134,6 +135,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             'forceFullScreen' => 0,
             'forceDesktop' => 0,
             'idCardVerification' => 0,
+            'recordTestTaker' => 0,
         ];
 
         foreach ($tracking_options as $group => $options) {
@@ -199,6 +201,7 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             'forceDesktop' => false,
             'multiSessionAttempt' => false,
             'impersonation' => false,
+            'recordTestTaker' => false,
         ];
 
         foreach ($boolean_options as $option => $default) {
@@ -501,15 +504,17 @@ class quizaccess_autoproctor extends quizaccess_autoproctor_parent_class_alias
             || !empty($tracking_options['detectMultipleScreens'])
             || !empty($tracking_options['forceFullScreen']);
 
-        // Microphone is needed for: audio
-        $needs_microphone = !empty($tracking_options['audio']);
+        // Microphone is needed for: audio, recordTestTaker (records camera + audio)
+        $needs_microphone = !empty($tracking_options['audio'])
+            || !empty($tracking_options['recordTestTaker']);
 
-        // Camera is needed for: testTakerPhoto, photosAtRandom, numHumans, impersonation, idCardVerification
+        // Camera is needed for: testTakerPhoto, photosAtRandom, numHumans, impersonation, idCardVerification, recordTestTaker
         $needs_camera = !empty($tracking_options['testTakerPhoto'])
             || !empty($tracking_options['photosAtRandom'])
             || !empty($tracking_options['numHumans'])
             || !empty($tracking_options['impersonation'])
-            || !empty($tracking_options['idCardVerification']);
+            || !empty($tracking_options['idCardVerification'])
+            || !empty($tracking_options['recordTestTaker']);
 
         $counter = 1;
         if ($needs_screen) {

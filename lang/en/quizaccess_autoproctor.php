@@ -86,6 +86,7 @@ $string['tracking_forceDesktop'] = 'Enforce Desktop';
 $string['tracking_multiSessionAttempt'] = 'Multi-session detection';
 $string['tracking_impersonation'] = 'Impersonation detection (costs extra)';
 $string['tracking_idCardVerification'] = 'ID Card Verification (costs extra)';
+$string['tracking_recordTestTaker'] = 'Record Test Taker (costs extra)';
 
 // Proctoring options - help text
 $string['tracking_audio_help'] = 'Record noise and audio cues in the background.';
@@ -102,6 +103,7 @@ $string['tracking_forceDesktop_help'] = 'Useful if you are conducting coding cha
 $string['tracking_multiSessionAttempt_help'] = 'Detect when the same test attempt is accessed from multiple devices, browsers, or IP addresses.';
 $string['tracking_impersonation_help'] = 'Compare random photos with the initial candidate photo to detect if a different person is taking the test. Costs extra credits.';
 $string['tracking_idCardVerification_help'] = 'Verify the candidate\'s identity by comparing their face with their ID card photo, extracting their name, and checking ID expiry date. Costs extra credits.';
+$string['tracking_recordTestTaker_help'] = 'Continuously records the test taker\'s camera and audio throughout the test, with automatic resume on page reload. Costs extra credits.';
 
 // Privacy API strings
 $string['privacy:metadata:quizaccess_autoproctor_sessions'] = 'Stores proctoring session data for quiz attempts.';
