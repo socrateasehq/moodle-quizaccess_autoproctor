@@ -78,14 +78,14 @@ $string['tracking_tabSwitch'] = 'Detect Switched Tab';
 $string['tracking_disableCopyPaste'] = 'Disable Copy/Paste';
 $string['tracking_captureSwitchedTab'] = 'Switched Tab Screenshot';
 $string['tracking_photosAtRandom'] = 'Take Random Photos';
-$string['tracking_recordSession'] = 'Record User Session (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
+$string['tracking_recordSession'] = 'Record User Session (costs extra)';
 $string['tracking_detectMultipleScreens'] = 'Detect Multiple Monitors';
 $string['tracking_testTakerPhoto'] = 'Capture Photo Before Start Test';
 $string['tracking_forceFullScreen'] = 'Enforce Full Screen';
 $string['tracking_forceDesktop'] = 'Enforce Desktop';
 $string['tracking_multiSessionAttempt'] = 'Multi-session detection';
-$string['tracking_impersonation'] = 'Impersonation detection (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
-$string['tracking_idCardVerification'] = 'ID Card Verification (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
+$string['tracking_impersonation'] = 'Impersonation detection (costs extra)';
+$string['tracking_idCardVerification'] = 'ID Card Verification (costs extra)';
 
 // Proctoring options - help text
 $string['tracking_audio_help'] = 'Record noise and audio cues in the background.';
