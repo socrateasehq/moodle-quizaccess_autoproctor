@@ -78,14 +78,15 @@ $string['tracking_tabSwitch'] = 'Detect Switched Tab';
 $string['tracking_disableCopyPaste'] = 'Disable Copy/Paste';
 $string['tracking_captureSwitchedTab'] = 'Switched Tab Screenshot';
 $string['tracking_photosAtRandom'] = 'Take Random Photos';
-$string['tracking_recordSession'] = 'Record User Session (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
+$string['tracking_recordSession'] = 'Record User Session (costs extra)';
 $string['tracking_detectMultipleScreens'] = 'Detect Multiple Monitors';
 $string['tracking_testTakerPhoto'] = 'Capture Photo Before Start Test';
 $string['tracking_forceFullScreen'] = 'Enforce Full Screen';
 $string['tracking_forceDesktop'] = 'Enforce Desktop';
 $string['tracking_multiSessionAttempt'] = 'Multi-session detection';
-$string['tracking_impersonation'] = 'Impersonation detection (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
-$string['tracking_idCardVerification'] = 'ID Card Verification (<a href="https://www.autoproctor.co/pricing/" target="_blank">costs extra</a>)';
+$string['tracking_impersonation'] = 'Impersonation detection (costs extra)';
+$string['tracking_idCardVerification'] = 'ID Card Verification (costs extra)';
+$string['tracking_recordTestTaker'] = 'Record Test Taker (costs extra)';
 
 // Proctoring options - help text
 $string['tracking_audio_help'] = 'Record noise and audio cues in the background.';
@@ -102,6 +103,7 @@ $string['tracking_forceDesktop_help'] = 'Useful if you are conducting coding cha
 $string['tracking_multiSessionAttempt_help'] = 'Detect when the same test attempt is accessed from multiple devices, browsers, or IP addresses.';
 $string['tracking_impersonation_help'] = 'Compare random photos with the initial candidate photo to detect if a different person is taking the test. Costs extra credits.';
 $string['tracking_idCardVerification_help'] = 'Verify the candidate\'s identity by comparing their face with their ID card photo, extracting their name, and checking ID expiry date. Costs extra credits.';
+$string['tracking_recordTestTaker_help'] = 'Continuously records the test taker\'s camera and audio throughout the test, with automatic resume on page reload. Costs extra credits.';
 
 // Privacy API strings
 $string['privacy:metadata:quizaccess_autoproctor_sessions'] = 'Stores proctoring session data for quiz attempts.';

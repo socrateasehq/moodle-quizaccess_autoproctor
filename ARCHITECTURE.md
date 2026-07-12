@@ -77,6 +77,7 @@ autoproctor/
   "testTakerPhoto": true,
   "photosAtRandom": false,
   "recordSession": true,
+  "recordTestTaker": false,
   "detectMultipleScreens": true,
   "forceFullScreen": false
 }
